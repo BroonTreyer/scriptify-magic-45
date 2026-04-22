@@ -1,60 +1,48 @@
 
 
-## CriativoOS — Sistema de geração de scripts publicitários com Claude
+## Corrigir timeout ao gerar scripts
 
-App de 4 etapas (Briefing → Análise → Scripts → Guia de Produção) que envia um briefing estruturado para a API do Claude (Anthropic) e renderiza a resposta em JSON em uma UI escura, estilo "performance marketing brutalista".
+### Problema
 
-### Arquitetura
+`upstream request timeout` = a server function chamou a API do Claude e ficou esperando a resposta inteira por mais de ~30s (limite de execução do worker). Como `claude-sonnet-4-5` gerando 5 scripts JSON longos demora frequentemente 40-90s, o servidor mata a requisição antes do Claude terminar.
 
-```text
-[Browser /]  ──POST──▶  [Server Function: generateScripts]  ──▶  api.anthropic.com
-   ▲                          (lê ANTHROPIC_API_KEY do                │
-   │                           process.env, monta prompt,              │
-   │                           parseia JSON da resposta)               │
-   └──────────────  JSON { analise, scripts, guia_producao } ◀─────────┘
-```
+A causa raiz é arquitetural: **uma única request HTTP síncrona não cabe no orçamento de tempo do worker**. Aumentar `max_tokens` ou tentar de novo não resolve.
 
-A chave da Anthropic **nunca** vai para o cliente — fica em uma server function do TanStack Start. Isso elimina o erro de CORS que o código original teria ao chamar `api.anthropic.com` direto do browser.
+### Solução: streaming SSE direto do Claude para o browser
 
-### Stack e arquivos
+Trocar a server function pós-processada por uma **rota de API pública que faz proxy de streaming** (`/api/generate-scripts`) usando SSE da Anthropic. O servidor abre a conexão com o Claude com `stream: true` e vai repassando os chunks pro navegador conforme chegam — assim nenhuma request fica pendurada esperando os 60s completos. O browser recebe bytes a cada poucos ms, então não há timeout de "upstream".
 
-- `src/routes/index.tsx` — página única com as 4 etapas (state machine: `briefing | analise | scripts | producao`).
-- `src/server/generate-scripts.ts` — server function `createServerFn` que recebe o briefing, chama Claude e retorna JSON tipado.
-- `src/components/criativo/` — componentes reutilizáveis: `ProgressBar`, `BriefingForm`, `AnaliseView`, `ScriptCard`, `GuiaProducaoView`, `LoadingDots`, `SelectGroup`.
-- `src/lib/criativo-types.ts` — tipos TS para `Analise`, `Script`, `GuiaProducao`, `BriefingInput`.
-- `src/styles.css` — adicionar imports das fontes (Space Mono, DM Sans, Bebas Neue) e tokens de cor (`--brand-red: #ff2d2d`, `--bg: #080808`, etc).
+Bônus: a UI passa a mostrar o texto sendo gerado em tempo real (efeito "digitando"), o que melhora muito a percepção de espera.
 
-### Fluxo de geração
+### Mudanças de arquivos
 
-1. Usuário preenche briefing (produto, público, dor, transformação, prova, tom, duração, plataforma, nº de scripts).
-2. Validação client-side dos 4 campos obrigatórios.
-3. `generateScripts({ briefing })` é chamada → server function monta o prompt (idêntico ao do código original), chama `https://api.anthropic.com/v1/messages` com modelo `claude-sonnet-4-5` e `max_tokens: 4000` (o original tinha 1000, insuficiente para 5+ scripts).
-4. Server faz `JSON.parse` da resposta (limpando blocos markdown), valida estrutura mínima e devolve `{ analise, scripts, guiaProducao }`.
-5. Cliente avança para etapa "análise" e o usuário navega entre etapas.
+1. **`src/routes/api/generate-scripts.ts`** (novo) — rota POST que:
+   - Recebe `{ briefing }` no body
+   - Chama `api.anthropic.com/v1/messages` com `stream: true`
+   - Retorna `new Response(claudeRes.body, { headers: { "content-type": "text/event-stream" } })` — passa o stream adiante sem bufferizar
+   - Lê `ANTHROPIC_API_KEY` do `process.env`
 
-### Erros tratados
+2. **`src/server/generate-scripts.ts`** — remover (ou deixar só o `buildPrompt` exportado para reuso).
 
-- `ANTHROPIC_API_KEY` ausente → 500 com mensagem clara.
-- Claude retorna JSON malformado → server tenta extrair bloco `{...}` e re-parsear; se falhar, retorna erro amigável.
-- 429 / 529 (rate limit / overloaded) → toast "Claude está sobrecarregado, tente em alguns segundos".
-- Timeout / falha de rede → toast genérico de erro.
+3. **`src/routes/index.tsx`** — substituir `useServerFn(generateScripts)` por:
+   - `fetch("/api/generate-scripts", { method: "POST", body: JSON.stringify({ briefing }) })`
+   - Ler `response.body.getReader()` em loop, parsear cada linha `data: {...}` do SSE da Anthropic, acumular `delta.text` num buffer
+   - Atualizar uma state `streamingText` para mostrar no UI durante a geração (substituindo o `LoadingDots` por um preview em tempo real)
+   - Quando o stream fechar, rodar `extractJson` + `JSON.parse` no buffer final e popular `analise/scripts/guiaProducao` como hoje
 
-### Design (fiel ao mock)
+4. **Tratamento de erros**:
+   - Se o Claude responder não-2xx no início do stream, capturar e mostrar mensagem amigável (401 = chave inválida, 429/529 = sobrecarregado)
+   - Se o JSON final não parsear, mostrar "Claude cortou a resposta — tente reduzir para 3 scripts"
+   - Botão de "Tentar de novo" mantendo o briefing
 
-- Fundo `#080808`, cards `#0d0d0d`, bordas `#1a1a1a`, vermelho de marca `#ff2d2d`.
-- Tipografia: Bebas Neue (títulos), Space Mono (labels/UI técnica), DM Sans (corpo).
-- Hero "SCRIPTS QUE PARAM O SCROLL E VENDEM" só aparece na etapa briefing.
-- ProgressBar com 4 passos numerados, check verde nos concluídos.
-- ScriptCard expansível com seções coloridas: HOOK (vermelho), AGITAÇÃO (laranja), VIRADA (verde), PROVA (azul), CTA (vermelho), Nota Estratégica (cinza). Botão COPIAR que copia o script formatado.
-- Animação `fadeUp` entre etapas, `LoadingDots` pulsante durante a geração com mensagens rotativas ("Analisando o público…", "Gerando hooks…", etc).
+### Detalhes técnicos
 
-### Segredo necessário
+- Rota fica em `/api/public/generate-scripts` para garantir que não exija auth (regra do TanStack Start: `/api/public/*` bypassa auth no published).
+- Sem assinatura/HMAC porque o endpoint só faz proxy autenticado pelo nosso lado (a `ANTHROPIC_API_KEY` está só no server, e cada chamada gasta créditos seus — vou adicionar um rate-limit simples por IP usando `getRequestIP` se você quiser).
+- `max_tokens` sobe para 8000 para garantir que 5-7 scripts caibam sem truncar.
+- Modelo: mantém `claude-sonnet-4-5`.
 
-Vou pedir a `ANTHROPIC_API_KEY` como secret depois que você aprovar — você obtém em https://console.anthropic.com/settings/keys. Nada será chamado direto do browser, então a chave fica segura.
+### Nada muda visualmente fora isto
 
-### O que fica fora deste plano (posso adicionar depois se quiser)
-
-- Histórico/login (versão atual é stateless — recarregar limpa tudo).
-- Export PDF do guia.
-- Edição de scripts gerados.
+A UI segue idêntica nas 4 etapas. A única diferença visível é que durante "gerar" você verá o texto bruto sendo cuspido em tempo real (em fonte mono pequena, dentro do mesmo box do `LoadingDots`).
 
