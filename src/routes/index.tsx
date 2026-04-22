@@ -14,6 +14,7 @@ import { hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
 import { BriefingHistorySheet } from "@/components/BriefingHistorySheet";
 import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
 import { UrlExtractor } from "@/components/UrlExtractor";
+import { BatchMatrix } from "@/components/BatchMatrix";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
@@ -494,6 +495,7 @@ function CriativoOS() {
   const [producingIndex, setProducingIndex] = useState<number | null>(null);
   const [generatedVideos, setGeneratedVideos] = useState<Record<number, GeneratedVideo>>({});
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
 
   const sessionKey = useMemo(
     () => (scripts.length ? hashScripts(scripts) : null),
@@ -1090,6 +1092,19 @@ function CriativoOS() {
 
             <CopyAllButton scripts={scripts} />
 
+            <button
+              type="button"
+              onClick={() => setBatchOpen(true)}
+              className="w-full mb-5 py-3 rounded text-[12px] font-mono-tech tracking-wider uppercase"
+              style={{
+                background: "transparent",
+                border: "1px dashed var(--co-red)",
+                color: "var(--co-red)",
+              }}
+            >
+              🎬 GERAR EM LOTE (A/B) — scripts × avatares × vozes
+            </button>
+
             {scripts.map((s, i) => (
               <ScriptCard
                 key={i}
@@ -1227,6 +1242,11 @@ function CriativoOS() {
         onOpenChange={setHistoryOpen}
         onLoad={loadFromHistory}
         onNew={reset}
+      />
+      <BatchMatrix
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
+        scripts={scripts}
       />
     </div>
   );
