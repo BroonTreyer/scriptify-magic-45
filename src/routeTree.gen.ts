@@ -11,6 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicGenerateScriptsRouteImport } from './routes/api/public/generate-scripts'
+import { Route as ApiPublicHeygenVoicesRouteImport } from './routes/api/public/heygen/voices'
+import { Route as ApiPublicHeygenGenerateRouteImport } from './routes/api/public/heygen/generate'
+import { Route as ApiPublicHeygenAvatarsRouteImport } from './routes/api/public/heygen/avatars'
+import { Route as ApiPublicHeygenStatusVideoIdRouteImport } from './routes/api/public/heygen/status.$videoId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,31 +27,87 @@ const ApiPublicGenerateScriptsRoute =
     path: '/api/public/generate-scripts',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHeygenVoicesRoute = ApiPublicHeygenVoicesRouteImport.update({
+  id: '/api/public/heygen/voices',
+  path: '/api/public/heygen/voices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHeygenGenerateRoute = ApiPublicHeygenGenerateRouteImport.update({
+  id: '/api/public/heygen/generate',
+  path: '/api/public/heygen/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHeygenAvatarsRoute = ApiPublicHeygenAvatarsRouteImport.update({
+  id: '/api/public/heygen/avatars',
+  path: '/api/public/heygen/avatars',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHeygenStatusVideoIdRoute =
+  ApiPublicHeygenStatusVideoIdRouteImport.update({
+    id: '/api/public/heygen/status/$videoId',
+    path: '/api/public/heygen/status/$videoId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
+  '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
+  '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
+  '/api/public/heygen/voices': typeof ApiPublicHeygenVoicesRoute
+  '/api/public/heygen/status/$videoId': typeof ApiPublicHeygenStatusVideoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
+  '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
+  '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
+  '/api/public/heygen/voices': typeof ApiPublicHeygenVoicesRoute
+  '/api/public/heygen/status/$videoId': typeof ApiPublicHeygenStatusVideoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
+  '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
+  '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
+  '/api/public/heygen/voices': typeof ApiPublicHeygenVoicesRoute
+  '/api/public/heygen/status/$videoId': typeof ApiPublicHeygenStatusVideoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/public/generate-scripts'
+  fullPaths:
+    | '/'
+    | '/api/public/generate-scripts'
+    | '/api/public/heygen/avatars'
+    | '/api/public/heygen/generate'
+    | '/api/public/heygen/voices'
+    | '/api/public/heygen/status/$videoId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/generate-scripts'
-  id: '__root__' | '/' | '/api/public/generate-scripts'
+  to:
+    | '/'
+    | '/api/public/generate-scripts'
+    | '/api/public/heygen/avatars'
+    | '/api/public/heygen/generate'
+    | '/api/public/heygen/voices'
+    | '/api/public/heygen/status/$videoId'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/public/generate-scripts'
+    | '/api/public/heygen/avatars'
+    | '/api/public/heygen/generate'
+    | '/api/public/heygen/voices'
+    | '/api/public/heygen/status/$videoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiPublicGenerateScriptsRoute: typeof ApiPublicGenerateScriptsRoute
+  ApiPublicHeygenAvatarsRoute: typeof ApiPublicHeygenAvatarsRoute
+  ApiPublicHeygenGenerateRoute: typeof ApiPublicHeygenGenerateRoute
+  ApiPublicHeygenVoicesRoute: typeof ApiPublicHeygenVoicesRoute
+  ApiPublicHeygenStatusVideoIdRoute: typeof ApiPublicHeygenStatusVideoIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -66,12 +126,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicGenerateScriptsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/heygen/voices': {
+      id: '/api/public/heygen/voices'
+      path: '/api/public/heygen/voices'
+      fullPath: '/api/public/heygen/voices'
+      preLoaderRoute: typeof ApiPublicHeygenVoicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/heygen/generate': {
+      id: '/api/public/heygen/generate'
+      path: '/api/public/heygen/generate'
+      fullPath: '/api/public/heygen/generate'
+      preLoaderRoute: typeof ApiPublicHeygenGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/heygen/avatars': {
+      id: '/api/public/heygen/avatars'
+      path: '/api/public/heygen/avatars'
+      fullPath: '/api/public/heygen/avatars'
+      preLoaderRoute: typeof ApiPublicHeygenAvatarsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/heygen/status/$videoId': {
+      id: '/api/public/heygen/status/$videoId'
+      path: '/api/public/heygen/status/$videoId'
+      fullPath: '/api/public/heygen/status/$videoId'
+      preLoaderRoute: typeof ApiPublicHeygenStatusVideoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiPublicGenerateScriptsRoute: ApiPublicGenerateScriptsRoute,
+  ApiPublicHeygenAvatarsRoute: ApiPublicHeygenAvatarsRoute,
+  ApiPublicHeygenGenerateRoute: ApiPublicHeygenGenerateRoute,
+  ApiPublicHeygenVoicesRoute: ApiPublicHeygenVoicesRoute,
+  ApiPublicHeygenStatusVideoIdRoute: ApiPublicHeygenStatusVideoIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
