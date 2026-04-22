@@ -103,11 +103,10 @@ function formatAllScripts(scripts: Script[]): string {
    STATUS RAIL — ticker técnico
    ────────────────────────────────────────────────────────── */
 function StatusRail() {
-  const [sessionId] = useState(() =>
-    Math.random().toString(16).slice(2, 6).toUpperCase(),
-  );
+  const [sessionId, setSessionId] = useState("0000");
   const [lat, setLat] = useState(218);
   useEffect(() => {
+    setSessionId(Math.random().toString(16).slice(2, 6).toUpperCase());
     const t = setInterval(
       () => setLat(180 + Math.floor(Math.random() * 90)),
       2200,
