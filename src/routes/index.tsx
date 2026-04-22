@@ -719,6 +719,16 @@ function CriativoOS() {
     setGuiaProducao(null);
   };
 
+  const loadFromHistory = (b: SavedBriefing) => {
+    setForm(b.briefing);
+    setAnalise(b.result.analise);
+    setScripts(b.result.scripts);
+    setGuiaProducao(b.result.guiaProducao);
+    setGeneratedVideos(loadVideos(b.scriptsHash));
+    setError(null);
+    setStep("scripts");
+  };
+
   return (
     <div className="min-h-screen" style={{ background: "var(--co-bg)" }}>
       {/* Header */}
