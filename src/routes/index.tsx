@@ -868,7 +868,7 @@ function CriativoOS() {
         {/* SCRIPTS */}
         {step === "scripts" && scripts.length > 0 && (
           <div className="animate-co-fade-up">
-            <div className="mb-8 flex justify-between items-end gap-4">
+            <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
               <div>
                 <h2 className="font-display text-3xl sm:text-4xl mb-2">
                   {scripts.length} SCRIPTS{" "}
@@ -881,7 +881,7 @@ function CriativoOS() {
               <button
                 type="button"
                 onClick={() => setStep("analise")}
-                className="px-4 py-2 rounded-sm text-[11px] font-mono-tech shrink-0"
+                className="px-4 py-2 rounded-sm text-[11px] font-mono-tech shrink-0 self-start sm:self-auto"
                 style={{
                   background: "transparent",
                   border: "1px solid var(--co-border)",
@@ -891,6 +891,8 @@ function CriativoOS() {
                 ← ANÁLISE
               </button>
             </div>
+
+            <CopyAllButton scripts={scripts} />
 
             {scripts.map((s, i) => (
               <ScriptCard key={i} script={s} index={i} />
