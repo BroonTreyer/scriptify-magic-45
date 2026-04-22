@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { extractJson } from "@/server/generate-scripts";
 import type {
   Analise,
@@ -9,6 +9,7 @@ import type {
 } from "@/lib/criativo-types";
 import type { GeneratedVideo } from "@/lib/heygen-types";
 import { HeygenDrawer } from "@/components/HeygenDrawer";
+import { hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
