@@ -681,6 +681,22 @@ function CriativoOS() {
                   "⚡ GERAR SCRIPTS AGORA"
                 )}
               </button>
+
+              {loading && streamingText && (
+                <div
+                  className="mt-4 p-4 rounded font-mono-tech text-[11px] leading-relaxed max-h-48 overflow-auto whitespace-pre-wrap"
+                  style={{
+                    background: "var(--co-bg)",
+                    border: "1px solid var(--co-border)",
+                    color: "var(--co-text-dim)",
+                  }}
+                  ref={(el) => {
+                    if (el) el.scrollTop = el.scrollHeight;
+                  }}
+                >
+                  {streamingText.slice(-1200)}
+                </div>
+              )}
             </div>
           </div>
         )}
