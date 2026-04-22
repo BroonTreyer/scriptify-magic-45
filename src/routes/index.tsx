@@ -509,35 +509,45 @@ function CriativoOS() {
         );
       }
 
-      const a = parsed.analise as Partial<Analise> | undefined;
-      const g = parsed.guia_producao as Partial<GuiaProducao> | undefined;
-      const validAnalise =
-        !!a &&
-        !!a.momento_de_vida &&
-        !!a.conversa_interna &&
-        !!a.desejo_real &&
-        !!a.objecao_principal;
-      const validGuia =
-        !!g &&
-        !!g.perfil_avatar &&
-        !!g.voz &&
-        !!g.visual &&
-        !!g.edicao &&
-        Array.isArray(g.checklist);
-      const validScripts =
-        Array.isArray(parsed.scripts) &&
-        parsed.scripts.length > 0 &&
-        parsed.scripts.every((s) => s && s.hook && s.cta);
-      if (!validAnalise || !validScripts || !validGuia) {
+      const a = (parsed.analise ?? {}) as Partial<Analise>;
+      const g = (parsed.guia_producao ?? {}) as Partial<GuiaProducao>;
+      const rawScripts = Array.isArray(parsed.scripts) ? parsed.scripts : [];
+
+      const filledAnalise: Analise = {
+        momento_de_vida: a.momento_de_vida ?? "",
+        conversa_interna: a.conversa_interna ?? "",
+        vergonha_oculta: a.vergonha_oculta ?? "",
+        desejo_real: a.desejo_real ?? "",
+        objecao_principal: a.objecao_principal ?? "",
+      };
+      const filledGuia: GuiaProducao = {
+        perfil_avatar: g.perfil_avatar ?? "",
+        voz: g.voz ?? "",
+        visual: g.visual ?? "",
+        edicao: g.edicao ?? "",
+        checklist: Array.isArray(g.checklist) ? g.checklist : [],
+      };
+
+      if (rawScripts.length === 0) {
         throw new Error(
-          "Resposta parcial do Claude (faltam campos). Tente novamente.",
+          "Claude não retornou nenhum script. Tente novamente.",
         );
       }
 
-      setAnalise(parsed.analise);
-      setScripts(parsed.scripts);
-      setGuiaProducao(parsed.guia_producao);
+      setAnalise(filledAnalise);
+      setScripts(rawScripts);
+      setGuiaProducao(filledGuia);
       setStep("analise");
+
+      const partial =
+        !a.momento_de_vida ||
+        !g.perfil_avatar ||
+        rawScripts.some((s) => !s?.hook || !s?.cta);
+      if (partial) {
+        setError(
+          "Resposta parcial do Claude — alguns campos vieram vazios. Considere gerar de novo.",
+        );
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erro ao gerar scripts.";
       setError(msg);
