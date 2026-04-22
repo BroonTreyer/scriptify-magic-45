@@ -7,6 +7,8 @@ import type {
   GuiaProducao,
   Script,
 } from "@/lib/criativo-types";
+import type { GeneratedVideo } from "@/lib/heygen-types";
+import { HeygenDrawer } from "@/components/HeygenDrawer";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
@@ -222,8 +224,25 @@ function ChoiceGroup({
   );
 }
 
-function ScriptCard({ script, index }: { script: Script; index: number }) {
-  return <ScriptCardImpl script={script} index={index} />;
+function ScriptCard({
+  script,
+  index,
+  onProduce,
+  generatedVideo,
+}: {
+  script: Script;
+  index: number;
+  onProduce: (i: number) => void;
+  generatedVideo?: GeneratedVideo;
+}) {
+  return (
+    <ScriptCardImpl
+      script={script}
+      index={index}
+      onProduce={onProduce}
+      generatedVideo={generatedVideo}
+    />
+  );
 }
 
 function CopyAllButton({ scripts }: { scripts: Script[] }) {
@@ -253,7 +272,31 @@ function CopyAllButton({ scripts }: { scripts: Script[] }) {
   );
 }
 
-function ScriptCardImpl({ script, index }: { script: Script; index: number }) {
+function formatRelative(iso: string): string {
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "agora";
+  if (min < 60) return `há ${min} min`;
+  return d.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function ScriptCardImpl({
+  script,
+  index,
+  onProduce,
+  generatedVideo,
+}: {
+  script: Script;
+  index: number;
+  onProduce: (i: number) => void;
+  generatedVideo?: GeneratedVideo;
+}) {
   const [expanded, setExpanded] = useState(index === 0);
   const [copied, setCopied] = useState(false);
 
@@ -346,6 +389,21 @@ function ScriptCardImpl({ script, index }: { script: Script; index: number }) {
             {copied ? "✓ COPIADO" : "COPIAR"}
           </span>
           <span
+            role="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onProduce(index);
+            }}
+            className="px-3.5 py-1.5 rounded-sm text-[11px] cursor-pointer font-mono-tech transition-colors"
+            style={{
+              background: "var(--co-red)",
+              border: "1px solid var(--co-red)",
+              color: "#fff",
+            }}
+          >
+            🎬 PRODUZIR
+          </span>
+          <span
             className="text-base transition-transform"
             style={{
               color: "var(--co-text-dim)",
@@ -360,6 +418,34 @@ function ScriptCardImpl({ script, index }: { script: Script; index: number }) {
       {expanded && (
         <div className="px-5 pb-5" style={{ background: "var(--co-surface)" }}>
           <div className="h-px mb-5" style={{ background: "var(--co-border)" }} />
+          {generatedVideo && (
+            <div
+              className="mb-5 px-4 py-3 rounded flex items-center justify-between gap-3 flex-wrap"
+              style={{
+                background: "color-mix(in oklab, var(--co-green) 10%, transparent)",
+                border: "1px solid var(--co-green)",
+              }}
+            >
+              <div className="flex flex-col">
+                <span className="text-[11px] font-bold font-mono-tech uppercase tracking-wider" style={{ color: "var(--co-green)" }}>
+                  ✓ VÍDEO GERADO
+                </span>
+                <span className="text-[11px] font-mono-tech" style={{ color: "var(--co-text-dim)" }}>
+                  {formatRelative(generatedVideo.generatedAt)}
+                </span>
+              </div>
+              <a
+                href={generatedVideo.videoUrl}
+                download={`heygen-${generatedVideo.videoId}.mp4`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] font-mono-tech px-3 py-1.5 rounded"
+                style={{ background: "var(--co-green)", color: "#000" }}
+              >
+                ⬇ BAIXAR
+              </a>
+            </div>
+          )}
           <Section label="▶ HOOK — 0 a 3s" text={script.hook} color="var(--co-red)" emphasized />
           <Section label="● AGITAÇÃO — 3 a 15s" text={script.agitacao} color="var(--co-orange)" />
           <Section label="↗ VIRADA — 15 a 20s" text={script.virada} color="var(--co-green)" />
@@ -400,6 +486,8 @@ function CriativoOS() {
   const [guiaProducao, setGuiaProducao] = useState<GuiaProducao | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState("");
+  const [producingIndex, setProducingIndex] = useState<number | null>(null);
+  const [generatedVideos, setGeneratedVideos] = useState<Record<number, GeneratedVideo>>({});
 
   const [form, setForm] = useState<BriefingInput>({
     produto: "",
@@ -926,7 +1014,13 @@ function CriativoOS() {
             <CopyAllButton scripts={scripts} />
 
             {scripts.map((s, i) => (
-              <ScriptCard key={i} script={s} index={i} />
+              <ScriptCard
+                key={i}
+                script={s}
+                index={i}
+                onProduce={(idx) => setProducingIndex(idx)}
+                generatedVideo={generatedVideos[i]}
+              />
             ))}
 
             <button
@@ -1039,6 +1133,18 @@ function CriativoOS() {
           </div>
         )}
       </main>
+      <HeygenDrawer
+        open={producingIndex !== null}
+        onOpenChange={(v) => {
+          if (!v) setProducingIndex(null);
+        }}
+        script={producingIndex !== null ? (scripts[producingIndex] ?? null) : null}
+        onVideoReady={(v) => {
+          if (producingIndex !== null) {
+            setGeneratedVideos((prev) => ({ ...prev, [producingIndex]: v }));
+          }
+        }}
+      />
     </div>
   );
 }
