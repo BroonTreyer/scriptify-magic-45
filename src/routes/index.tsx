@@ -506,11 +506,57 @@ function ScriptCardImpl({
               </button>
             </div>
           )}
-          <Section label="▶ HOOK — 0 a 3s" text={script.hook} color="var(--co-red)" emphasized />
-          <Section label="● AGITAÇÃO — 3 a 15s" text={script.agitacao} color="var(--co-orange)" />
-          <Section label="↗ VIRADA — 15 a 20s" text={script.virada} color="var(--co-green)" />
-          <Section label="✦ PROVA — 20 a 35s" text={script.prova} color="var(--co-blue)" />
-          <Section label="⚡ CTA — ÚLTIMOS 5s" text={script.cta} color="var(--co-red)" emphasized />
+          {/* Language tabs */}
+          <div className="mb-5 -mx-1 flex flex-wrap gap-1.5">
+            {LANGUAGES.map((l) => {
+              const active = activeLang === l.code;
+              const has = l.code === "pt" || !!translations[l.code];
+              const isLoading = translatingLang === l.code;
+              return (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => handleTranslate(l.code)}
+                  disabled={isLoading}
+                  className="px-2.5 py-1 rounded-sm text-[10px] font-mono-tech uppercase tracking-wider transition-colors"
+                  style={{
+                    background: active
+                      ? "var(--co-red)"
+                      : has
+                        ? "color-mix(in oklab, var(--co-red) 8%, transparent)"
+                        : "transparent",
+                    border: active
+                      ? "1px solid var(--co-red)"
+                      : "1px solid var(--co-border)",
+                    color: active ? "#fff" : has ? "var(--co-red)" : "var(--co-text-dim)",
+                    opacity: isLoading ? 0.6 : 1,
+                  }}
+                  title={l.label}
+                >
+                  {l.flag} {l.code.toUpperCase()}
+                  {isLoading && " …"}
+                  {!has && !isLoading && l.code !== "pt" && " 🌍"}
+                </button>
+              );
+            })}
+          </div>
+          {translateError && (
+            <div
+              className="mb-4 px-3 py-2 rounded text-[11px] font-mono-tech"
+              style={{
+                background: "color-mix(in oklab, var(--co-red) 10%, transparent)",
+                border: "1px solid var(--co-red)",
+                color: "var(--co-red)",
+              }}
+            >
+              ⚠ {translateError}
+            </div>
+          )}
+          <Section label="▶ HOOK — 0 a 3s" text={activeScript.hook} color="var(--co-red)" emphasized />
+          <Section label="● AGITAÇÃO — 3 a 15s" text={activeScript.agitacao} color="var(--co-orange)" />
+          <Section label="↗ VIRADA — 15 a 20s" text={activeScript.virada} color="var(--co-green)" />
+          <Section label="✦ PROVA — 20 a 35s" text={activeScript.prova} color="var(--co-blue)" />
+          <Section label="⚡ CTA — ÚLTIMOS 5s" text={activeScript.cta} color="var(--co-red)" emphasized />
 
           {script.estrategia && (
             <div
