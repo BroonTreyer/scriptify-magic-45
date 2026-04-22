@@ -15,6 +15,7 @@ import { BriefingHistorySheet } from "@/components/BriefingHistorySheet";
 import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
 import { UrlExtractor } from "@/components/UrlExtractor";
 import { BatchMatrix } from "@/components/BatchMatrix";
+import { UGCStudio } from "@/components/UGCStudio";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
@@ -496,6 +497,7 @@ function CriativoOS() {
   const [generatedVideos, setGeneratedVideos] = useState<Record<number, GeneratedVideo>>({});
   const [historyOpen, setHistoryOpen] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
+  const [ugcOpen, setUgcOpen] = useState(false);
 
   const sessionKey = useMemo(
     () => (scripts.length ? hashScripts(scripts) : null),
@@ -765,6 +767,19 @@ function CriativoOS() {
               title="Histórico de briefings"
             >
               🕘 HISTÓRICO
+            </button>
+            <button
+              type="button"
+              onClick={() => setUgcOpen(true)}
+              className="text-[10px] font-mono-tech uppercase tracking-wider px-2.5 py-1.5 rounded-sm transition-colors"
+              style={{
+                border: "1px solid var(--co-red)",
+                color: "var(--co-red)",
+                background: "transparent",
+              }}
+              title="UGC Studio — fala vira vídeo"
+            >
+              🎤 UGC
             </button>
             <div
               className="text-[10px] font-mono-tech uppercase tracking-wider hidden sm:block"
