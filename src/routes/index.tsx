@@ -4,12 +4,15 @@ import { extractJson } from "@/server/generate-scripts";
 import type {
   Analise,
   BriefingInput,
+  GenerateResult,
   GuiaProducao,
   Script,
 } from "@/lib/criativo-types";
 import type { GeneratedVideo } from "@/lib/heygen-types";
 import { HeygenDrawer } from "@/components/HeygenDrawer";
 import { hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
+import { BriefingHistorySheet } from "@/components/BriefingHistorySheet";
+import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
