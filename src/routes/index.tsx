@@ -16,6 +16,7 @@ import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
 import { UrlExtractor } from "@/components/UrlExtractor";
 import { BatchMatrix } from "@/components/BatchMatrix";
 import { UGCStudio } from "@/components/UGCStudio";
+import { VideoEditor } from "@/components/VideoEditor";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
@@ -306,6 +307,7 @@ function ScriptCardImpl({
 }) {
   const [expanded, setExpanded] = useState(index === 0);
   const [copied, setCopied] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const copy = () => {
     navigator.clipboard.writeText(formatScript(script));
@@ -451,6 +453,14 @@ function ScriptCardImpl({
               >
                 ⬇ BAIXAR
               </a>
+              <button
+                type="button"
+                onClick={() => setEditorOpen(true)}
+                className="text-[11px] font-mono-tech px-3 py-1.5 rounded"
+                style={{ background: "var(--co-red)", color: "#fff" }}
+              >
+                ✂️ EDITAR
+              </button>
             </div>
           )}
           <Section label="▶ HOOK — 0 a 3s" text={script.hook} color="var(--co-red)" emphasized />
@@ -479,6 +489,14 @@ function ScriptCardImpl({
             </div>
           )}
         </div>
+      )}
+      {generatedVideo && (
+        <VideoEditor
+          open={editorOpen}
+          onOpenChange={setEditorOpen}
+          videoUrl={generatedVideo.videoUrl}
+          videoLabel={`Script #${index + 1} — ${script.angulo || ""}`}
+        />
       )}
     </div>
   );

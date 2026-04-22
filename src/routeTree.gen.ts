@@ -16,6 +16,7 @@ import { Route as ApiPublicHeygenVoicesRouteImport } from './routes/api/public/h
 import { Route as ApiPublicHeygenGenerateWithAudioRouteImport } from './routes/api/public/heygen/generate-with-audio'
 import { Route as ApiPublicHeygenGenerateRouteImport } from './routes/api/public/heygen/generate'
 import { Route as ApiPublicHeygenAvatarsRouteImport } from './routes/api/public/heygen/avatars'
+import { Route as ApiPublicElevenlabsTranscribeUrlRouteImport } from './routes/api/public/elevenlabs/transcribe-url'
 import { Route as ApiPublicElevenlabsTranscribeRouteImport } from './routes/api/public/elevenlabs/transcribe'
 import { Route as ApiPublicElevenlabsCloneVoiceRouteImport } from './routes/api/public/elevenlabs/clone-voice'
 import { Route as ApiPublicHeygenStatusVideoIdRouteImport } from './routes/api/public/heygen/status.$videoId'
@@ -59,6 +60,12 @@ const ApiPublicHeygenAvatarsRoute = ApiPublicHeygenAvatarsRouteImport.update({
   path: '/api/public/heygen/avatars',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicElevenlabsTranscribeUrlRoute =
+  ApiPublicElevenlabsTranscribeUrlRouteImport.update({
+    id: '/api/public/elevenlabs/transcribe-url',
+    path: '/api/public/elevenlabs/transcribe-url',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicElevenlabsTranscribeRoute =
   ApiPublicElevenlabsTranscribeRouteImport.update({
     id: '/api/public/elevenlabs/transcribe',
@@ -96,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/elevenlabs/clone-voice': typeof ApiPublicElevenlabsCloneVoiceRoute
   '/api/public/elevenlabs/transcribe': typeof ApiPublicElevenlabsTranscribeRoute
+  '/api/public/elevenlabs/transcribe-url': typeof ApiPublicElevenlabsTranscribeUrlRoute
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
   '/api/public/heygen/generate-with-audio': typeof ApiPublicHeygenGenerateWithAudioRoute
@@ -110,6 +118,7 @@ export interface FileRoutesByTo {
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/elevenlabs/clone-voice': typeof ApiPublicElevenlabsCloneVoiceRoute
   '/api/public/elevenlabs/transcribe': typeof ApiPublicElevenlabsTranscribeRoute
+  '/api/public/elevenlabs/transcribe-url': typeof ApiPublicElevenlabsTranscribeUrlRoute
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
   '/api/public/heygen/generate-with-audio': typeof ApiPublicHeygenGenerateWithAudioRoute
@@ -125,6 +134,7 @@ export interface FileRoutesById {
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/elevenlabs/clone-voice': typeof ApiPublicElevenlabsCloneVoiceRoute
   '/api/public/elevenlabs/transcribe': typeof ApiPublicElevenlabsTranscribeRoute
+  '/api/public/elevenlabs/transcribe-url': typeof ApiPublicElevenlabsTranscribeUrlRoute
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
   '/api/public/heygen/generate-with-audio': typeof ApiPublicHeygenGenerateWithAudioRoute
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/api/public/generate-scripts'
     | '/api/public/elevenlabs/clone-voice'
     | '/api/public/elevenlabs/transcribe'
+    | '/api/public/elevenlabs/transcribe-url'
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
     | '/api/public/heygen/generate-with-audio'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/api/public/generate-scripts'
     | '/api/public/elevenlabs/clone-voice'
     | '/api/public/elevenlabs/transcribe'
+    | '/api/public/elevenlabs/transcribe-url'
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
     | '/api/public/heygen/generate-with-audio'
@@ -169,6 +181,7 @@ export interface FileRouteTypes {
     | '/api/public/generate-scripts'
     | '/api/public/elevenlabs/clone-voice'
     | '/api/public/elevenlabs/transcribe'
+    | '/api/public/elevenlabs/transcribe-url'
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
     | '/api/public/heygen/generate-with-audio'
@@ -184,6 +197,7 @@ export interface RootRouteChildren {
   ApiPublicGenerateScriptsRoute: typeof ApiPublicGenerateScriptsRoute
   ApiPublicElevenlabsCloneVoiceRoute: typeof ApiPublicElevenlabsCloneVoiceRoute
   ApiPublicElevenlabsTranscribeRoute: typeof ApiPublicElevenlabsTranscribeRoute
+  ApiPublicElevenlabsTranscribeUrlRoute: typeof ApiPublicElevenlabsTranscribeUrlRoute
   ApiPublicHeygenAvatarsRoute: typeof ApiPublicHeygenAvatarsRoute
   ApiPublicHeygenGenerateRoute: typeof ApiPublicHeygenGenerateRoute
   ApiPublicHeygenGenerateWithAudioRoute: typeof ApiPublicHeygenGenerateWithAudioRoute
@@ -244,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHeygenAvatarsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/elevenlabs/transcribe-url': {
+      id: '/api/public/elevenlabs/transcribe-url'
+      path: '/api/public/elevenlabs/transcribe-url'
+      fullPath: '/api/public/elevenlabs/transcribe-url'
+      preLoaderRoute: typeof ApiPublicElevenlabsTranscribeUrlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/elevenlabs/transcribe': {
       id: '/api/public/elevenlabs/transcribe'
       path: '/api/public/elevenlabs/transcribe'
@@ -288,6 +309,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicGenerateScriptsRoute: ApiPublicGenerateScriptsRoute,
   ApiPublicElevenlabsCloneVoiceRoute: ApiPublicElevenlabsCloneVoiceRoute,
   ApiPublicElevenlabsTranscribeRoute: ApiPublicElevenlabsTranscribeRoute,
+  ApiPublicElevenlabsTranscribeUrlRoute: ApiPublicElevenlabsTranscribeUrlRoute,
   ApiPublicHeygenAvatarsRoute: ApiPublicHeygenAvatarsRoute,
   ApiPublicHeygenGenerateRoute: ApiPublicHeygenGenerateRoute,
   ApiPublicHeygenGenerateWithAudioRoute: ApiPublicHeygenGenerateWithAudioRoute,

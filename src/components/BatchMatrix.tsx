@@ -20,6 +20,7 @@ import {
   type BatchJob,
 } from "@/lib/batch-storage";
 import { hashScripts } from "@/lib/video-storage";
+import { VideoEditor } from "@/components/VideoEditor";
 
 type Props = {
   open: boolean;
@@ -762,6 +763,7 @@ function JobCard({ job, onWinner }: { job: BatchJob; onWinner: () => void }) {
     done: "var(--co-green, #3fb950)",
     failed: "var(--co-red)",
   };
+  const [editorOpen, setEditorOpen] = useState(false);
   return (
     <div
       className="rounded overflow-hidden"
@@ -831,7 +833,25 @@ function JobCard({ job, onWinner }: { job: BatchJob; onWinner: () => void }) {
         >
           {job.status} · {job.ratio} · {job.resolution}
         </div>
+        {job.status === "done" && job.video?.videoUrl && (
+          <button
+            type="button"
+            onClick={() => setEditorOpen(true)}
+            className="mt-1 w-full px-2 py-1.5 rounded text-[10px] font-mono uppercase tracking-widest"
+            style={{ background: "var(--co-red)", color: "#fff" }}
+          >
+            ✂️ EDITAR
+          </button>
+        )}
       </div>
+      {job.video?.videoUrl && (
+        <VideoEditor
+          open={editorOpen}
+          onOpenChange={setEditorOpen}
+          videoUrl={job.video.videoUrl}
+          videoLabel={`${job.scriptLabel} — ${job.avatarName}`}
+        />
+      )}
     </div>
   );
 }
