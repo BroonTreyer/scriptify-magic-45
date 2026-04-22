@@ -378,6 +378,8 @@ export function HeygenDrawer({
                   )}
               </div>
             )}
+            </>
+            )}
           </section>
 
           {/* VOZ */}
