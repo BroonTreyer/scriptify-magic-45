@@ -64,14 +64,14 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --background: oklch(0.18 0 0);
+  --foreground: oklch(0.92 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
+  --primary: oklch(0.62 0.24 27);
+  --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: oklch(0.968 0.007 247.896);
@@ -96,6 +96,19 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+
+  /* CriativoOS brand */
+  --co-bg: oklch(0.16 0 0);
+  --co-surface: oklch(0.20 0 0);
+  --co-border: oklch(0.27 0 0);
+  --co-border-strong: oklch(0.32 0 0);
+  --co-text: oklch(0.92 0 0);
+  --co-text-muted: oklch(0.62 0 0);
+  --co-text-dim: oklch(0.45 0 0);
+  --co-red: oklch(0.62 0.24 27);
+  --co-orange: oklch(0.74 0.18 55);
+  --co-green: oklch(0.78 0.20 152);
+  --co-blue: oklch(0.66 0.18 240);
 }
 
 .dark {
