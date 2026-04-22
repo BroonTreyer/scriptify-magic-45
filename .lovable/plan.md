@@ -1,48 +1,67 @@
 
 
-## Corrigir timeout ao gerar scripts
+## Fix definitivo: parar o Claude de truncar o JSON
 
-### Problema
+### Diagnóstico
 
-`upstream request timeout` = a server function chamou a API do Claude e ficou esperando a resposta inteira por mais de ~30s (limite de execução do worker). Como `claude-sonnet-4-5` gerando 5 scripts JSON longos demora frequentemente 40-90s, o servidor mata a requisição antes do Claude terminar.
+O erro "Claude cortou a resposta" aparece porque `JSON.parse(extractJson(fullText))` falha. Três causas combinadas:
 
-A causa raiz é arquitetural: **uma única request HTTP síncrona não cabe no orçamento de tempo do worker**. Aumentar `max_tokens` ou tentar de novo não resolve.
+1. **`max_tokens: 8000` é insuficiente** para 5 scripts longos + análise + guia de produção. Claude Sonnet 4.5 frequentemente gera 10k-12k tokens nesse formato e o stream termina com `stop_reason: "max_tokens"` no meio do JSON.
+2. **Não detectamos `stop_reason`** nos eventos SSE — então quando o Claude trunca, mostramos uma mensagem genérica em vez de dizer exatamente "ficou sem tokens, aumente o limite ou reduza scripts".
+3. **Sem prefill de assistente**, Claude às vezes adiciona texto explicativo antes do `{`, o que combinado com truncamento confunde o `extractJson`.
 
-### Solução: streaming SSE direto do Claude para o browser
+### Solução
 
-Trocar a server function pós-processada por uma **rota de API pública que faz proxy de streaming** (`/api/generate-scripts`) usando SSE da Anthropic. O servidor abre a conexão com o Claude com `stream: true` e vai repassando os chunks pro navegador conforme chegam — assim nenhuma request fica pendurada esperando os 60s completos. O browser recebe bytes a cada poucos ms, então não há timeout de "upstream".
+#### 1. Aumentar drasticamente `max_tokens` e usar prefill
 
-Bônus: a UI passa a mostrar o texto sendo gerado em tempo real (efeito "digitando"), o que melhora muito a percepção de espera.
+Em `src/routes/api/public/generate-scripts.ts`:
 
-### Mudanças de arquivos
+- Subir `max_tokens` para **16000** (Sonnet 4.5 suporta até 64k de output). Cobre confortavelmente 7 scripts.
+- Adicionar **prefill de assistente** com `{` para forçar Claude a começar direto no JSON:
+  ```ts
+  messages: [
+    { role: "user", content: buildPrompt(briefing) },
+    { role: "assistant", content: "{" },  // prefill
+  ]
+  ```
+  No cliente, prepender `{` no `fullText` antes do parse.
 
-1. **`src/routes/api/generate-scripts.ts`** (novo) — rota POST que:
-   - Recebe `{ briefing }` no body
-   - Chama `api.anthropic.com/v1/messages` com `stream: true`
-   - Retorna `new Response(claudeRes.body, { headers: { "content-type": "text/event-stream" } })` — passa o stream adiante sem bufferizar
-   - Lê `ANTHROPIC_API_KEY` do `process.env`
+#### 2. Capturar `stop_reason` no SSE
 
-2. **`src/server/generate-scripts.ts`** — remover (ou deixar só o `buildPrompt` exportado para reuso).
+Em `src/routes/index.tsx`, no loop do reader, também parsear eventos `message_delta` que contêm `delta.stop_reason`. Se for `"max_tokens"`, mostrar mensagem específica:
 
-3. **`src/routes/index.tsx`** — substituir `useServerFn(generateScripts)` por:
-   - `fetch("/api/generate-scripts", { method: "POST", body: JSON.stringify({ briefing }) })`
-   - Ler `response.body.getReader()` em loop, parsear cada linha `data: {...}` do SSE da Anthropic, acumular `delta.text` num buffer
-   - Atualizar uma state `streamingText` para mostrar no UI durante a geração (substituindo o `LoadingDots` por um preview em tempo real)
-   - Quando o stream fechar, rodar `extractJson` + `JSON.parse` no buffer final e popular `analise/scripts/guiaProducao` como hoje
+> "Claude atingiu o limite de tokens. Tente reduzir para 3 scripts."
 
-4. **Tratamento de erros**:
-   - Se o Claude responder não-2xx no início do stream, capturar e mostrar mensagem amigável (401 = chave inválida, 429/529 = sobrecarregado)
-   - Se o JSON final não parsear, mostrar "Claude cortou a resposta — tente reduzir para 3 scripts"
-   - Botão de "Tentar de novo" mantendo o briefing
+E se for `"end_turn"` (terminou normalmente) mas o JSON ainda assim falhar, mostrar:
 
-### Detalhes técnicos
+> "Claude retornou JSON inválido. Tente novamente."
 
-- Rota fica em `/api/public/generate-scripts` para garantir que não exija auth (regra do TanStack Start: `/api/public/*` bypassa auth no published).
-- Sem assinatura/HMAC porque o endpoint só faz proxy autenticado pelo nosso lado (a `ANTHROPIC_API_KEY` está só no server, e cada chamada gasta créditos seus — vou adicionar um rate-limit simples por IP usando `getRequestIP` se você quiser).
-- `max_tokens` sobe para 8000 para garantir que 5-7 scripts caibam sem truncar.
-- Modelo: mantém `claude-sonnet-4-5`.
+#### 3. Endurecer o prompt
 
-### Nada muda visualmente fora isto
+Em `src/server/generate-scripts.ts`, no fim do prompt adicionar:
 
-A UI segue idêntica nas 4 etapas. A única diferença visível é que durante "gerar" você verá o texto bruto sendo cuspido em tempo real (em fonte mono pequena, dentro do mesmo box do `LoadingDots`).
+```
+IMPORTANTE: Comece sua resposta DIRETAMENTE com { e termine com }. 
+Nada antes, nada depois. Sem markdown, sem explicação.
+```
+
+E reforçar que cada campo deve ser **conciso** (máx 2-3 frases por seção do script) para não estourar tokens com 5+ scripts.
+
+#### 4. Melhorar `extractJson`
+
+Tornar mais robusto — se o JSON estiver incompleto (sem `}` final ou com chaves não fechadas), tentar fechar contando brackets. Última linha de defesa antes de mostrar erro.
+
+#### 5. UX: mostrar progresso real do streaming
+
+Hoje o `streamingText` é populado mas **não é exibido em lugar nenhum** no UI durante o loading. Adicionar um box mono pequeno abaixo do botão "Gerar" mostrando os últimos ~300 chars do que está chegando — assim o usuário vê que está acontecendo algo e percebe quando truncou.
+
+### Arquivos alterados
+
+- `src/routes/api/public/generate-scripts.ts` — `max_tokens: 16000`, prefill de assistente
+- `src/server/generate-scripts.ts` — prompt mais rígido sobre formato + `extractJson` mais robusto
+- `src/routes/index.tsx` — capturar `stop_reason`, prepend `{` no fullText, mostrar streaming preview no UI, mensagens de erro específicas
+
+### Sem mudança visual fora do streaming preview
+
+Tudo continua igual exceto pela caixinha mono que aparece durante a geração, mostrando o JSON sendo cuspido em tempo real.
 
