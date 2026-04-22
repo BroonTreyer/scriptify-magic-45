@@ -223,6 +223,37 @@ function ChoiceGroup({
 }
 
 function ScriptCard({ script, index }: { script: Script; index: number }) {
+  return <ScriptCardImpl script={script} index={index} />;
+}
+
+function CopyAllButton({ scripts }: { scripts: Script[] }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = () => {
+    navigator.clipboard.writeText(formatAllScripts(scripts));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      className="w-full mb-4 py-3 rounded text-[12px] font-bold font-mono-tech tracking-wider uppercase transition-colors"
+      style={{
+        background: copied
+          ? "color-mix(in oklab, var(--co-green) 12%, transparent)"
+          : "transparent",
+        border: copied
+          ? "1px solid var(--co-green)"
+          : "1px solid var(--co-border-strong)",
+        color: copied ? "var(--co-green)" : "var(--co-text)",
+      }}
+    >
+      {copied ? "✓ TODOS COPIADOS" : `📋 COPIAR TODOS OS ${scripts.length} SCRIPTS`}
+    </button>
+  );
+}
+
+function ScriptCardImpl({ script, index }: { script: Script; index: number }) {
   const [expanded, setExpanded] = useState(index === 0);
   const [copied, setCopied] = useState(false);
 
