@@ -389,6 +389,21 @@ function ScriptCardImpl({
             {copied ? "✓ COPIADO" : "COPIAR"}
           </span>
           <span
+            role="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onProduce(index);
+            }}
+            className="px-3.5 py-1.5 rounded-sm text-[11px] cursor-pointer font-mono-tech transition-colors"
+            style={{
+              background: "var(--co-red)",
+              border: "1px solid var(--co-red)",
+              color: "#fff",
+            }}
+          >
+            🎬 PRODUZIR
+          </span>
+          <span
             className="text-base transition-transform"
             style={{
               color: "var(--co-text-dim)",
