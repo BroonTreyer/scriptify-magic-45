@@ -64,6 +64,10 @@ export function HeygenDrawer({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pollStartRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onVideoReadyRef = useRef(onVideoReady);
+  useEffect(() => {
+    onVideoReadyRef.current = onVideoReady;
+  }, [onVideoReady]);
 
   const { text: finalText, truncated } = script
     ? buildScriptText(script)
@@ -129,7 +133,7 @@ export function HeygenDrawer({
         setStatusInfo(json);
         if (json.status === "completed" && json.video_url) {
           setPhase("done");
-          onVideoReady({
+          onVideoReadyRef.current({
             videoId,
             videoUrl: json.video_url,
             generatedAt: new Date().toISOString(),
@@ -159,7 +163,7 @@ export function HeygenDrawer({
       cancelled = true;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
-  }, [phase, videoId, onVideoReady]);
+  }, [phase, videoId]);
 
   const playPreview = (url?: string) => {
     if (!url) return;
