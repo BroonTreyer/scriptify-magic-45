@@ -7,6 +7,8 @@ import type {
   GuiaProducao,
   Script,
 } from "@/lib/criativo-types";
+import type { GeneratedVideo } from "@/lib/heygen-types";
+import { HeygenDrawer } from "@/components/HeygenDrawer";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
