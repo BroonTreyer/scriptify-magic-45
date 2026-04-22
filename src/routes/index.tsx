@@ -492,6 +492,7 @@ function CriativoOS() {
   const [streamingText, setStreamingText] = useState("");
   const [producingIndex, setProducingIndex] = useState<number | null>(null);
   const [generatedVideos, setGeneratedVideos] = useState<Record<number, GeneratedVideo>>({});
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const sessionKey = useMemo(
     () => (scripts.length ? hashScripts(scripts) : null),
