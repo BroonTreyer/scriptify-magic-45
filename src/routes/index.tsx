@@ -17,6 +17,13 @@ import { UrlExtractor } from "@/components/UrlExtractor";
 import { BatchMatrix } from "@/components/BatchMatrix";
 import { UGCStudio } from "@/components/UGCStudio";
 import { VideoEditor } from "@/components/VideoEditor";
+import {
+  LANGUAGES,
+  loadTranslations,
+  saveTranslations,
+  type LanguageCode,
+  type TranslationMap,
+} from "@/lib/translation-storage";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
@@ -237,11 +244,15 @@ function ScriptCard({
   index,
   onProduce,
   generatedVideo,
+  translations,
+  onTranslate,
 }: {
   script: Script;
   index: number;
-  onProduce: (i: number) => void;
+  onProduce: (i: number, override?: Script) => void;
   generatedVideo?: GeneratedVideo;
+  translations: Partial<Record<LanguageCode, Script>>;
+  onTranslate: (i: number, lang: LanguageCode) => Promise<void>;
 }) {
   return (
     <ScriptCardImpl
@@ -249,6 +260,8 @@ function ScriptCard({
       index={index}
       onProduce={onProduce}
       generatedVideo={generatedVideo}
+      translations={translations}
+      onTranslate={onTranslate}
     />
   );
 }
@@ -299,18 +312,48 @@ function ScriptCardImpl({
   index,
   onProduce,
   generatedVideo,
+  translations,
+  onTranslate,
 }: {
   script: Script;
   index: number;
-  onProduce: (i: number) => void;
+  onProduce: (i: number, override?: Script) => void;
   generatedVideo?: GeneratedVideo;
+  translations: Partial<Record<LanguageCode, Script>>;
+  onTranslate: (i: number, lang: LanguageCode) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(index === 0);
   const [copied, setCopied] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [activeLang, setActiveLang] = useState<LanguageCode>("pt");
+  const [translatingLang, setTranslatingLang] = useState<LanguageCode | null>(null);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+
+  const activeScript: Script = activeLang === "pt" ? script : translations[activeLang] ?? script;
+
+  const handleTranslate = async (lang: LanguageCode) => {
+    if (lang === "pt") {
+      setActiveLang("pt");
+      return;
+    }
+    if (translations[lang]) {
+      setActiveLang(lang);
+      return;
+    }
+    setTranslatingLang(lang);
+    setTranslateError(null);
+    try {
+      await onTranslate(index, lang);
+      setActiveLang(lang);
+    } catch (e) {
+      setTranslateError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTranslatingLang(null);
+    }
+  };
 
   const copy = () => {
-    navigator.clipboard.writeText(formatScript(script));
+    navigator.clipboard.writeText(formatScript(activeScript));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -401,7 +444,7 @@ function ScriptCardImpl({
             role="button"
             onClick={(e) => {
               e.stopPropagation();
-              onProduce(index);
+              onProduce(index, activeScript);
             }}
             className="px-3.5 py-1.5 rounded-sm text-[11px] cursor-pointer font-mono-tech transition-colors"
             style={{
@@ -410,7 +453,7 @@ function ScriptCardImpl({
               color: "#fff",
             }}
           >
-            🎬 PRODUZIR
+            🎬 PRODUZIR{activeLang !== "pt" ? ` ${LANGUAGES.find((l) => l.code === activeLang)?.flag}` : ""}
           </span>
           <span
             className="text-base transition-transform"
@@ -463,11 +506,57 @@ function ScriptCardImpl({
               </button>
             </div>
           )}
-          <Section label="▶ HOOK — 0 a 3s" text={script.hook} color="var(--co-red)" emphasized />
-          <Section label="● AGITAÇÃO — 3 a 15s" text={script.agitacao} color="var(--co-orange)" />
-          <Section label="↗ VIRADA — 15 a 20s" text={script.virada} color="var(--co-green)" />
-          <Section label="✦ PROVA — 20 a 35s" text={script.prova} color="var(--co-blue)" />
-          <Section label="⚡ CTA — ÚLTIMOS 5s" text={script.cta} color="var(--co-red)" emphasized />
+          {/* Language tabs */}
+          <div className="mb-5 -mx-1 flex flex-wrap gap-1.5">
+            {LANGUAGES.map((l) => {
+              const active = activeLang === l.code;
+              const has = l.code === "pt" || !!translations[l.code];
+              const isLoading = translatingLang === l.code;
+              return (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => handleTranslate(l.code)}
+                  disabled={isLoading}
+                  className="px-2.5 py-1 rounded-sm text-[10px] font-mono-tech uppercase tracking-wider transition-colors"
+                  style={{
+                    background: active
+                      ? "var(--co-red)"
+                      : has
+                        ? "color-mix(in oklab, var(--co-red) 8%, transparent)"
+                        : "transparent",
+                    border: active
+                      ? "1px solid var(--co-red)"
+                      : "1px solid var(--co-border)",
+                    color: active ? "#fff" : has ? "var(--co-red)" : "var(--co-text-dim)",
+                    opacity: isLoading ? 0.6 : 1,
+                  }}
+                  title={l.label}
+                >
+                  {l.flag} {l.code.toUpperCase()}
+                  {isLoading && " …"}
+                  {!has && !isLoading && l.code !== "pt" && " 🌍"}
+                </button>
+              );
+            })}
+          </div>
+          {translateError && (
+            <div
+              className="mb-4 px-3 py-2 rounded text-[11px] font-mono-tech"
+              style={{
+                background: "color-mix(in oklab, var(--co-red) 10%, transparent)",
+                border: "1px solid var(--co-red)",
+                color: "var(--co-red)",
+              }}
+            >
+              ⚠ {translateError}
+            </div>
+          )}
+          <Section label="▶ HOOK — 0 a 3s" text={activeScript.hook} color="var(--co-red)" emphasized />
+          <Section label="● AGITAÇÃO — 3 a 15s" text={activeScript.agitacao} color="var(--co-orange)" />
+          <Section label="↗ VIRADA — 15 a 20s" text={activeScript.virada} color="var(--co-green)" />
+          <Section label="✦ PROVA — 20 a 35s" text={activeScript.prova} color="var(--co-blue)" />
+          <Section label="⚡ CTA — ÚLTIMOS 5s" text={activeScript.cta} color="var(--co-red)" emphasized />
 
           {script.estrategia && (
             <div
@@ -512,7 +601,9 @@ function CriativoOS() {
   const [error, setError] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState("");
   const [producingIndex, setProducingIndex] = useState<number | null>(null);
+  const [producingScript, setProducingScript] = useState<Script | null>(null);
   const [generatedVideos, setGeneratedVideos] = useState<Record<number, GeneratedVideo>>({});
+  const [translations, setTranslations] = useState<TranslationMap>({});
   const [historyOpen, setHistoryOpen] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
   const [ugcOpen, setUgcOpen] = useState(false);
@@ -536,6 +627,41 @@ function CriativoOS() {
     if (!sessionKey) return;
     saveVideos(sessionKey, generatedVideos);
   }, [sessionKey, generatedVideos]);
+
+  // Load/persist translations
+  useEffect(() => {
+    if (!sessionKey) {
+      setTranslations({});
+      return;
+    }
+    setTranslations(loadTranslations(sessionKey));
+  }, [sessionKey]);
+  useEffect(() => {
+    if (!sessionKey) return;
+    saveTranslations(sessionKey, translations);
+  }, [sessionKey, translations]);
+
+  const translateScript = async (idx: number, lang: LanguageCode) => {
+    const src = scripts[idx];
+    if (!src) throw new Error("Script não encontrado.");
+    const langDef = LANGUAGES.find((l) => l.code === lang);
+    if (!langDef) throw new Error("Idioma inválido.");
+    const res = await fetch("/api/public/translate-script", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        script: src,
+        targetLang: lang,
+        targetLangLabel: langDef.label,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `Erro (${res.status}).`);
+    setTranslations((prev) => ({
+      ...prev,
+      [idx]: { ...(prev[idx] || {}), [lang]: json.script as Script },
+    }));
+  };
 
   const [form, setForm] = useState<BriefingInput>({
     produto: "",
@@ -1143,8 +1269,13 @@ function CriativoOS() {
                 key={i}
                 script={s}
                 index={i}
-                onProduce={(idx) => setProducingIndex(idx)}
+                onProduce={(idx, override) => {
+                  setProducingScript(override ?? scripts[idx]);
+                  setProducingIndex(idx);
+                }}
                 generatedVideo={generatedVideos[i]}
+                translations={translations[i] || {}}
+                onTranslate={translateScript}
               />
             ))}
 
@@ -1261,9 +1392,12 @@ function CriativoOS() {
       <HeygenDrawer
         open={producingIndex !== null}
         onOpenChange={(v) => {
-          if (!v) setProducingIndex(null);
+          if (!v) {
+            setProducingIndex(null);
+            setProducingScript(null);
+          }
         }}
-        script={producingIndex !== null ? (scripts[producingIndex] ?? null) : null}
+        script={producingScript ?? (producingIndex !== null ? (scripts[producingIndex] ?? null) : null)}
         onVideoReady={(v) => {
           if (producingIndex !== null) {
             setGeneratedVideos((prev) => ({ ...prev, [producingIndex]: v }));

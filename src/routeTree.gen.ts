@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicTranslateScriptRouteImport } from './routes/api/public/translate-script'
 import { Route as ApiPublicGenerateScriptsRouteImport } from './routes/api/public/generate-scripts'
 import { Route as ApiPublicExtractUrlRouteImport } from './routes/api/public/extract-url'
 import { Route as ApiPublicHeygenVoicesRouteImport } from './routes/api/public/heygen/voices'
@@ -28,6 +29,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTranslateScriptRoute =
+  ApiPublicTranslateScriptRouteImport.update({
+    id: '/api/public/translate-script',
+    path: '/api/public/translate-script',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicGenerateScriptsRoute =
   ApiPublicGenerateScriptsRouteImport.update({
     id: '/api/public/generate-scripts',
@@ -101,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
+  '/api/public/translate-script': typeof ApiPublicTranslateScriptRoute
   '/api/public/elevenlabs/clone-voice': typeof ApiPublicElevenlabsCloneVoiceRoute
   '/api/public/elevenlabs/transcribe': typeof ApiPublicElevenlabsTranscribeRoute
   '/api/public/elevenlabs/transcribe-url': typeof ApiPublicElevenlabsTranscribeUrlRoute
@@ -116,6 +124,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
+  '/api/public/translate-script': typeof ApiPublicTranslateScriptRoute
   '/api/public/elevenlabs/clone-voice': typeof ApiPublicElevenlabsCloneVoiceRoute
   '/api/public/elevenlabs/transcribe': typeof ApiPublicElevenlabsTranscribeRoute
   '/api/public/elevenlabs/transcribe-url': typeof ApiPublicElevenlabsTranscribeUrlRoute
@@ -132,6 +141,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
+  '/api/public/translate-script': typeof ApiPublicTranslateScriptRoute
   '/api/public/elevenlabs/clone-voice': typeof ApiPublicElevenlabsCloneVoiceRoute
   '/api/public/elevenlabs/transcribe': typeof ApiPublicElevenlabsTranscribeRoute
   '/api/public/elevenlabs/transcribe-url': typeof ApiPublicElevenlabsTranscribeUrlRoute
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/public/extract-url'
     | '/api/public/generate-scripts'
+    | '/api/public/translate-script'
     | '/api/public/elevenlabs/clone-voice'
     | '/api/public/elevenlabs/transcribe'
     | '/api/public/elevenlabs/transcribe-url'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/public/extract-url'
     | '/api/public/generate-scripts'
+    | '/api/public/translate-script'
     | '/api/public/elevenlabs/clone-voice'
     | '/api/public/elevenlabs/transcribe'
     | '/api/public/elevenlabs/transcribe-url'
@@ -179,6 +191,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/public/extract-url'
     | '/api/public/generate-scripts'
+    | '/api/public/translate-script'
     | '/api/public/elevenlabs/clone-voice'
     | '/api/public/elevenlabs/transcribe'
     | '/api/public/elevenlabs/transcribe-url'
@@ -195,6 +208,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiPublicExtractUrlRoute: typeof ApiPublicExtractUrlRoute
   ApiPublicGenerateScriptsRoute: typeof ApiPublicGenerateScriptsRoute
+  ApiPublicTranslateScriptRoute: typeof ApiPublicTranslateScriptRoute
   ApiPublicElevenlabsCloneVoiceRoute: typeof ApiPublicElevenlabsCloneVoiceRoute
   ApiPublicElevenlabsTranscribeRoute: typeof ApiPublicElevenlabsTranscribeRoute
   ApiPublicElevenlabsTranscribeUrlRoute: typeof ApiPublicElevenlabsTranscribeUrlRoute
@@ -214,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/translate-script': {
+      id: '/api/public/translate-script'
+      path: '/api/public/translate-script'
+      fullPath: '/api/public/translate-script'
+      preLoaderRoute: typeof ApiPublicTranslateScriptRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/generate-scripts': {
@@ -307,6 +328,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiPublicExtractUrlRoute: ApiPublicExtractUrlRoute,
   ApiPublicGenerateScriptsRoute: ApiPublicGenerateScriptsRoute,
+  ApiPublicTranslateScriptRoute: ApiPublicTranslateScriptRoute,
   ApiPublicElevenlabsCloneVoiceRoute: ApiPublicElevenlabsCloneVoiceRoute,
   ApiPublicElevenlabsTranscribeRoute: ApiPublicElevenlabsTranscribeRoute,
   ApiPublicElevenlabsTranscribeUrlRoute: ApiPublicElevenlabsTranscribeUrlRoute,
