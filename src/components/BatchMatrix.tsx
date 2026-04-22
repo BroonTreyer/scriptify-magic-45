@@ -20,6 +20,7 @@ import {
   type BatchJob,
 } from "@/lib/batch-storage";
 import { hashScripts } from "@/lib/video-storage";
+import { VideoEditor } from "@/components/VideoEditor";
 
 type Props = {
   open: boolean;
