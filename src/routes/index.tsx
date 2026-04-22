@@ -1243,6 +1243,11 @@ function CriativoOS() {
         onLoad={loadFromHistory}
         onNew={reset}
       />
+      <BatchMatrix
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
+        scripts={scripts}
+      />
     </div>
   );
 }
