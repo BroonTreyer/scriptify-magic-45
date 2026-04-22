@@ -16,6 +16,7 @@ import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
 import { UrlExtractor } from "@/components/UrlExtractor";
 import { BatchMatrix } from "@/components/BatchMatrix";
 import { UGCStudio } from "@/components/UGCStudio";
+import { VideoEditor } from "@/components/VideoEditor";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
