@@ -363,49 +363,72 @@ export function HeygenDrawer({
               </div>
             ) : (
               <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                {voices.map((v) => {
-                  const active = selectedVoice === v.voice_id;
-                  return (
-                    <div
-                      key={v.voice_id}
-                      className="flex items-center gap-2 rounded px-3 py-2"
-                      style={{
-                        border: active
-                          ? "1px solid var(--co-red)"
-                          : "1px solid var(--co-border)",
-                        background: active
-                          ? "color-mix(in oklab, var(--co-red) 8%, transparent)"
-                          : "var(--co-surface)",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setSelectedVoice(v.voice_id)}
-                        className="flex-1 text-left"
-                      >
-                        <div className="text-[13px]" style={{ color: "var(--co-text)" }}>
-                          {v.name}
-                        </div>
-                        <div className="text-[10px] font-mono uppercase" style={labelStyle}>
-                          {v.gender}
-                        </div>
-                      </button>
-                      {v.preview_audio && (
-                        <button
-                          type="button"
-                          onClick={() => playPreview(v.preview_audio)}
-                          className="text-xs px-2 py-1 rounded font-mono"
-                          style={{
-                            border: "1px solid var(--co-border-strong)",
-                            color: "var(--co-text-dim)",
-                          }}
+                {(() => {
+                  const groups: Record<string, HeygenVoice[]> = { Feminino: [], Masculino: [], Outro: [] };
+                  for (const v of voices) {
+                    const g = (v.gender || "").toLowerCase();
+                    if (g.startsWith("f") || g.includes("female")) groups.Feminino.push(v);
+                    else if (g.startsWith("m") || g.includes("male")) groups.Masculino.push(v);
+                    else groups.Outro.push(v);
+                  }
+                  return (["Feminino", "Masculino", "Outro"] as const).map((gName) => {
+                    const list = groups[gName];
+                    if (!list.length) return null;
+                    return (
+                      <div key={gName} className="space-y-1.5">
+                        <h4
+                          className="text-[10px] font-bold font-mono uppercase tracking-widest pt-2 pb-1"
+                          style={{ color: "var(--co-red)" }}
                         >
-                          ▶
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                          {gName} · {list.length}
+                        </h4>
+                        {list.map((v) => {
+                          const active = selectedVoice === v.voice_id;
+                          return (
+                            <div
+                              key={v.voice_id}
+                              className="flex items-center gap-2 rounded px-3 py-2"
+                              style={{
+                                border: active
+                                  ? "1px solid var(--co-red)"
+                                  : "1px solid var(--co-border)",
+                                background: active
+                                  ? "color-mix(in oklab, var(--co-red) 8%, transparent)"
+                                  : "var(--co-surface)",
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => setSelectedVoice(v.voice_id)}
+                                className="flex-1 text-left"
+                              >
+                                <div className="text-[13px]" style={{ color: "var(--co-text)" }}>
+                                  {v.name}
+                                </div>
+                                <div className="text-[10px] font-mono uppercase" style={labelStyle}>
+                                  {v.gender}
+                                </div>
+                              </button>
+                              {v.preview_audio && (
+                                <button
+                                  type="button"
+                                  onClick={() => playPreview(v.preview_audio)}
+                                  className="text-xs px-2 py-1 rounded font-mono"
+                                  style={{
+                                    border: "1px solid var(--co-border-strong)",
+                                    color: "var(--co-text-dim)",
+                                  }}
+                                >
+                                  ▶
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  });
+                })()}
                 {!voices.length && (
                   <div className="text-xs font-mono" style={labelStyle}>
                     Nenhuma voz em português encontrada.
