@@ -1263,6 +1263,7 @@ function CriativoOS() {
         onOpenChange={setBatchOpen}
         scripts={scripts}
       />
+      <UGCStudio open={ugcOpen} onOpenChange={setUgcOpen} />
     </div>
   );
 }
