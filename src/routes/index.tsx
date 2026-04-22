@@ -13,6 +13,7 @@ import { HeygenDrawer } from "@/components/HeygenDrawer";
 import { hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
 import { BriefingHistorySheet } from "@/components/BriefingHistorySheet";
 import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
+import { UrlExtractor } from "@/components/UrlExtractor";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
@@ -799,6 +800,21 @@ function CriativoOS() {
                 scripts prontos pra rodar — com guia de produção no HeyGen.
               </p>
             </div>
+
+            <UrlExtractor
+              onExtracted={(partial) =>
+                setForm((f) => ({
+                  ...f,
+                  produto: partial.produto || f.produto,
+                  publico: partial.publico || f.publico,
+                  dor: partial.dor || f.dor,
+                  transformacao: partial.transformacao || f.transformacao,
+                  prova: partial.prova || f.prova,
+                  tom: partial.tom || f.tom,
+                  url: partial.url || f.url,
+                }))
+              }
+            />
 
             <div
               className="rounded-md p-6 sm:p-8 mb-6"
