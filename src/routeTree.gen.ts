@@ -16,6 +16,7 @@ import { Route as ApiPublicHeygenVoicesRouteImport } from './routes/api/public/h
 import { Route as ApiPublicHeygenGenerateWithAudioRouteImport } from './routes/api/public/heygen/generate-with-audio'
 import { Route as ApiPublicHeygenGenerateRouteImport } from './routes/api/public/heygen/generate'
 import { Route as ApiPublicHeygenAvatarsRouteImport } from './routes/api/public/heygen/avatars'
+import { Route as ApiPublicElevenlabsTranscribeRouteImport } from './routes/api/public/elevenlabs/transcribe'
 import { Route as ApiPublicElevenlabsCloneVoiceRouteImport } from './routes/api/public/elevenlabs/clone-voice'
 import { Route as ApiPublicHeygenStatusVideoIdRouteImport } from './routes/api/public/heygen/status.$videoId'
 import { Route as ApiPublicHeygenPhotoAvatarCreateRouteImport } from './routes/api/public/heygen/photo-avatar.create'
@@ -58,6 +59,12 @@ const ApiPublicHeygenAvatarsRoute = ApiPublicHeygenAvatarsRouteImport.update({
   path: '/api/public/heygen/avatars',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicElevenlabsTranscribeRoute =
+  ApiPublicElevenlabsTranscribeRouteImport.update({
+    id: '/api/public/elevenlabs/transcribe',
+    path: '/api/public/elevenlabs/transcribe',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicElevenlabsCloneVoiceRoute =
   ApiPublicElevenlabsCloneVoiceRouteImport.update({
     id: '/api/public/elevenlabs/clone-voice',
@@ -88,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/elevenlabs/clone-voice': typeof ApiPublicElevenlabsCloneVoiceRoute
+  '/api/public/elevenlabs/transcribe': typeof ApiPublicElevenlabsTranscribeRoute
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
   '/api/public/heygen/generate-with-audio': typeof ApiPublicHeygenGenerateWithAudioRoute
@@ -101,6 +109,7 @@ export interface FileRoutesByTo {
   '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/elevenlabs/clone-voice': typeof ApiPublicElevenlabsCloneVoiceRoute
+  '/api/public/elevenlabs/transcribe': typeof ApiPublicElevenlabsTranscribeRoute
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
   '/api/public/heygen/generate-with-audio': typeof ApiPublicHeygenGenerateWithAudioRoute
@@ -115,6 +124,7 @@ export interface FileRoutesById {
   '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/elevenlabs/clone-voice': typeof ApiPublicElevenlabsCloneVoiceRoute
+  '/api/public/elevenlabs/transcribe': typeof ApiPublicElevenlabsTranscribeRoute
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
   '/api/public/heygen/generate-with-audio': typeof ApiPublicHeygenGenerateWithAudioRoute
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/api/public/extract-url'
     | '/api/public/generate-scripts'
     | '/api/public/elevenlabs/clone-voice'
+    | '/api/public/elevenlabs/transcribe'
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
     | '/api/public/heygen/generate-with-audio'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/api/public/extract-url'
     | '/api/public/generate-scripts'
     | '/api/public/elevenlabs/clone-voice'
+    | '/api/public/elevenlabs/transcribe'
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
     | '/api/public/heygen/generate-with-audio'
@@ -156,6 +168,7 @@ export interface FileRouteTypes {
     | '/api/public/extract-url'
     | '/api/public/generate-scripts'
     | '/api/public/elevenlabs/clone-voice'
+    | '/api/public/elevenlabs/transcribe'
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
     | '/api/public/heygen/generate-with-audio'
@@ -170,6 +183,7 @@ export interface RootRouteChildren {
   ApiPublicExtractUrlRoute: typeof ApiPublicExtractUrlRoute
   ApiPublicGenerateScriptsRoute: typeof ApiPublicGenerateScriptsRoute
   ApiPublicElevenlabsCloneVoiceRoute: typeof ApiPublicElevenlabsCloneVoiceRoute
+  ApiPublicElevenlabsTranscribeRoute: typeof ApiPublicElevenlabsTranscribeRoute
   ApiPublicHeygenAvatarsRoute: typeof ApiPublicHeygenAvatarsRoute
   ApiPublicHeygenGenerateRoute: typeof ApiPublicHeygenGenerateRoute
   ApiPublicHeygenGenerateWithAudioRoute: typeof ApiPublicHeygenGenerateWithAudioRoute
@@ -230,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHeygenAvatarsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/elevenlabs/transcribe': {
+      id: '/api/public/elevenlabs/transcribe'
+      path: '/api/public/elevenlabs/transcribe'
+      fullPath: '/api/public/elevenlabs/transcribe'
+      preLoaderRoute: typeof ApiPublicElevenlabsTranscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/elevenlabs/clone-voice': {
       id: '/api/public/elevenlabs/clone-voice'
       path: '/api/public/elevenlabs/clone-voice'
@@ -266,6 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicExtractUrlRoute: ApiPublicExtractUrlRoute,
   ApiPublicGenerateScriptsRoute: ApiPublicGenerateScriptsRoute,
   ApiPublicElevenlabsCloneVoiceRoute: ApiPublicElevenlabsCloneVoiceRoute,
+  ApiPublicElevenlabsTranscribeRoute: ApiPublicElevenlabsTranscribeRoute,
   ApiPublicHeygenAvatarsRoute: ApiPublicHeygenAvatarsRoute,
   ApiPublicHeygenGenerateRoute: ApiPublicHeygenGenerateRoute,
   ApiPublicHeygenGenerateWithAudioRoute: ApiPublicHeygenGenerateWithAudioRoute,
