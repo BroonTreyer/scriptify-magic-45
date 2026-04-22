@@ -490,6 +490,26 @@ function CriativoOS() {
   const [producingIndex, setProducingIndex] = useState<number | null>(null);
   const [generatedVideos, setGeneratedVideos] = useState<Record<number, GeneratedVideo>>({});
 
+  const sessionKey = useMemo(
+    () => (scripts.length ? hashScripts(scripts) : null),
+    [scripts],
+  );
+
+  // Load persisted videos when the script set changes
+  useEffect(() => {
+    if (!sessionKey) {
+      setGeneratedVideos({});
+      return;
+    }
+    setGeneratedVideos(loadVideos(sessionKey));
+  }, [sessionKey]);
+
+  // Persist videos whenever they change
+  useEffect(() => {
+    if (!sessionKey) return;
+    saveVideos(sessionKey, generatedVideos);
+  }, [sessionKey, generatedVideos]);
+
   const [form, setForm] = useState<BriefingInput>({
     produto: "",
     url: "",
