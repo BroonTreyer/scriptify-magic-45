@@ -554,15 +554,26 @@ export function HeygenDrawer({
 
           {/* GERAR */}
           {phase === "config" || phase === "error" ? (
-            <button
-              type="button"
-              onClick={generate}
-              disabled={!selectedAvatar || !selectedVoice || !finalText}
-              className="w-full py-4 rounded font-mono text-sm font-bold uppercase tracking-widest disabled:opacity-50"
-              style={{ background: "var(--co-red)", color: "#fff" }}
-            >
-              GERAR VÍDEO ⚡
-            </button>
+            <div className="space-y-2">
+              <div
+                className="text-[10px] font-mono uppercase tracking-widest text-right"
+                style={{
+                  color: finalText.length >= 1500 ? "var(--co-red)" : "var(--co-text-dim)",
+                }}
+              >
+                {finalText.length} / 1500 caracteres
+                {finalText.length >= 1500 && " · TRUNCADO"}
+              </div>
+              <button
+                type="button"
+                onClick={generate}
+                disabled={!selectedAvatar || !selectedVoice || !finalText}
+                className="w-full py-4 rounded font-mono text-sm font-bold uppercase tracking-widest disabled:opacity-50"
+                style={{ background: "var(--co-red)", color: "#fff" }}
+              >
+                GERAR VÍDEO ⚡
+              </button>
+            </div>
           ) : null}
 
           {phase === "generating" && (
