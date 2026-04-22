@@ -628,6 +628,41 @@ function CriativoOS() {
     saveVideos(sessionKey, generatedVideos);
   }, [sessionKey, generatedVideos]);
 
+  // Load/persist translations
+  useEffect(() => {
+    if (!sessionKey) {
+      setTranslations({});
+      return;
+    }
+    setTranslations(loadTranslations(sessionKey));
+  }, [sessionKey]);
+  useEffect(() => {
+    if (!sessionKey) return;
+    saveTranslations(sessionKey, translations);
+  }, [sessionKey, translations]);
+
+  const translateScript = async (idx: number, lang: LanguageCode) => {
+    const src = scripts[idx];
+    if (!src) throw new Error("Script não encontrado.");
+    const langDef = LANGUAGES.find((l) => l.code === lang);
+    if (!langDef) throw new Error("Idioma inválido.");
+    const res = await fetch("/api/public/translate-script", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        script: src,
+        targetLang: lang,
+        targetLangLabel: langDef.label,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `Erro (${res.status}).`);
+    setTranslations((prev) => ({
+      ...prev,
+      [idx]: { ...(prev[idx] || {}), [lang]: json.script as Script },
+    }));
+  };
+
   const [form, setForm] = useState<BriefingInput>({
     produto: "",
     url: "",
