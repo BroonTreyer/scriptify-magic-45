@@ -14,6 +14,7 @@ import type {
   HeygenVoice,
 } from "@/lib/heygen-types";
 import type { Script } from "@/lib/criativo-types";
+import { PhotoAvatarUpload } from "@/components/PhotoAvatarUpload";
 
 function buildScriptText(s: Script): { text: string; truncated: boolean } {
   const raw = [s.hook, s.agitacao, s.virada, s.prova, s.cta]
