@@ -199,8 +199,7 @@ function ScriptCard({ script, index }: { script: Script; index: number }) {
   const [copied, setCopied] = useState(false);
 
   const copy = () => {
-    const full = `[${script.angulo}]\n\nHOOK: ${script.hook}\n\nAGITAÇÃO: ${script.agitacao}\n\nVIRADA: ${script.virada}\n\nPROVA: ${script.prova}\n\nCTA: ${script.cta}`;
-    navigator.clipboard.writeText(full);
+    navigator.clipboard.writeText(formatScript(script));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
