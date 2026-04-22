@@ -63,24 +63,34 @@ CRÍTICO DE FORMATO: Comece sua resposta DIRETAMENTE com { e termine com }. Nada
 }
 
 export function extractJson(text: string): string {
+/**
+ * Lightweight extraction: strips markdown fences and any text before the
+ * first '{' / after the last '}'. Does NOT attempt to repair truncated JSON
+ * — that would mask real stream interruptions. Use `repairJson` explicitly
+ * as a controlled fallback if needed.
+ */
+export function extractJson(text: string): string {
+  let cleaned = text.replace(/```json|```/g, "").trim();
+  const start = cleaned.indexOf("{");
+  if (start > 0) cleaned = cleaned.slice(start);
+  else if (start === -1) return cleaned;
+  const lastClose = cleaned.lastIndexOf("}");
+  if (lastClose !== -1) cleaned = cleaned.slice(0, lastClose + 1);
+  return cleaned;
+}
+
+/**
+ * Last-resort repair: closes open strings and brackets so a truncated
+ * payload can at least be parsed. Should NOT be used silently in the
+ * main flow — only as an explicit fallback when the caller decides
+ * partial data is acceptable.
+ */
+export function repairJson(text: string): string {
   let cleaned = text.replace(/```json|```/g, "").trim();
   const start = cleaned.indexOf("{");
   if (start > 0) cleaned = cleaned.slice(start);
   else if (start === -1) return cleaned;
 
-  // If JSON looks complete, return as-is
-  const lastClose = cleaned.lastIndexOf("}");
-  if (lastClose !== -1) {
-    const candidate = cleaned.slice(0, lastClose + 1);
-    try {
-      JSON.parse(candidate);
-      return candidate;
-    } catch {
-      /* fall through to repair */
-    }
-  }
-
-  // Attempt to repair truncated JSON by closing open brackets/strings
   let inString = false;
   let escape = false;
   const stack: string[] = [];
@@ -94,9 +104,7 @@ export function extractJson(text: string): string {
     else if (c === "[") stack.push("]");
     else if (c === "}" || c === "]") stack.pop();
   }
-  let repaired = cleaned;
-  // Trim trailing garbage after last structural char
-  repaired = repaired.replace(/,\s*$/, "");
+  let repaired = cleaned.replace(/,\s*$/, "");
   if (inString) repaired += '"';
   while (stack.length) repaired += stack.pop();
   return repaired;
