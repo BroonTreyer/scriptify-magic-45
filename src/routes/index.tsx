@@ -683,6 +683,17 @@ function CriativoOS() {
       setGuiaProducao(filledGuia);
       setStep("analise");
 
+      const result: GenerateResult = {
+        analise: filledAnalise,
+        scripts: rawScripts,
+        guiaProducao: filledGuia,
+      };
+      try {
+        saveBriefing(form, result);
+      } catch {
+        /* ignore storage errors */
+      }
+
       const partial =
         !a.momento_de_vida ||
         !g.perfil_avatar ||
