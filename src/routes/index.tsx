@@ -48,6 +48,34 @@ const LOADING_MSGS = [
   "Montando guia de produção HeyGen...",
 ];
 
+function formatScript(s: Script): string {
+  return [
+    `HOOK (0–3s):`,
+    s.hook ?? "",
+    ``,
+    `AGITAÇÃO (3–15s):`,
+    s.agitacao ?? "",
+    ``,
+    `VIRADA (15–20s):`,
+    s.virada ?? "",
+    ``,
+    `PROVA (20–35s):`,
+    s.prova ?? "",
+    ``,
+    `CTA (últimos 5s):`,
+    s.cta ?? "",
+    ``,
+    `ÂNGULO: ${s.angulo ?? ""}`,
+    `NOTA ESTRATÉGICA: ${s.estrategia ?? ""}`,
+  ].join("\n");
+}
+
+function formatAllScripts(scripts: Script[]): string {
+  return scripts
+    .map((s, i) => `#${i + 1}\n\n${formatScript(s)}`)
+    .join("\n\n---\n\n");
+}
+
 function ProgressBar({ step }: { step: Step }) {
   const idx = STEPS.indexOf(step);
   return (
