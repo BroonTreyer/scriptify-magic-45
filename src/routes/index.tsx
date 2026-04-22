@@ -312,18 +312,48 @@ function ScriptCardImpl({
   index,
   onProduce,
   generatedVideo,
+  translations,
+  onTranslate,
 }: {
   script: Script;
   index: number;
-  onProduce: (i: number) => void;
+  onProduce: (i: number, override?: Script) => void;
   generatedVideo?: GeneratedVideo;
+  translations: Partial<Record<LanguageCode, Script>>;
+  onTranslate: (i: number, lang: LanguageCode) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(index === 0);
   const [copied, setCopied] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [activeLang, setActiveLang] = useState<LanguageCode>("pt");
+  const [translatingLang, setTranslatingLang] = useState<LanguageCode | null>(null);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+
+  const activeScript: Script = activeLang === "pt" ? script : translations[activeLang] ?? script;
+
+  const handleTranslate = async (lang: LanguageCode) => {
+    if (lang === "pt") {
+      setActiveLang("pt");
+      return;
+    }
+    if (translations[lang]) {
+      setActiveLang(lang);
+      return;
+    }
+    setTranslatingLang(lang);
+    setTranslateError(null);
+    try {
+      await onTranslate(index, lang);
+      setActiveLang(lang);
+    } catch (e) {
+      setTranslateError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTranslatingLang(null);
+    }
+  };
 
   const copy = () => {
-    navigator.clipboard.writeText(formatScript(script));
+    navigator.clipboard.writeText(formatScript(activeScript));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
