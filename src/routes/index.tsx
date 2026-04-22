@@ -48,6 +48,34 @@ const LOADING_MSGS = [
   "Montando guia de produção HeyGen...",
 ];
 
+function formatScript(s: Script): string {
+  return [
+    `HOOK (0–3s):`,
+    s.hook ?? "",
+    ``,
+    `AGITAÇÃO (3–15s):`,
+    s.agitacao ?? "",
+    ``,
+    `VIRADA (15–20s):`,
+    s.virada ?? "",
+    ``,
+    `PROVA (20–35s):`,
+    s.prova ?? "",
+    ``,
+    `CTA (últimos 5s):`,
+    s.cta ?? "",
+    ``,
+    `ÂNGULO: ${s.angulo ?? ""}`,
+    `NOTA ESTRATÉGICA: ${s.estrategia ?? ""}`,
+  ].join("\n");
+}
+
+function formatAllScripts(scripts: Script[]): string {
+  return scripts
+    .map((s, i) => `#${i + 1}\n\n${formatScript(s)}`)
+    .join("\n\n---\n\n");
+}
+
 function ProgressBar({ step }: { step: Step }) {
   const idx = STEPS.indexOf(step);
   return (
@@ -195,12 +223,42 @@ function ChoiceGroup({
 }
 
 function ScriptCard({ script, index }: { script: Script; index: number }) {
+  return <ScriptCardImpl script={script} index={index} />;
+}
+
+function CopyAllButton({ scripts }: { scripts: Script[] }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = () => {
+    navigator.clipboard.writeText(formatAllScripts(scripts));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      className="w-full mb-4 py-3 rounded text-[12px] font-bold font-mono-tech tracking-wider uppercase transition-colors"
+      style={{
+        background: copied
+          ? "color-mix(in oklab, var(--co-green) 12%, transparent)"
+          : "transparent",
+        border: copied
+          ? "1px solid var(--co-green)"
+          : "1px solid var(--co-border-strong)",
+        color: copied ? "var(--co-green)" : "var(--co-text)",
+      }}
+    >
+      {copied ? "✓ TODOS COPIADOS" : `📋 COPIAR TODOS OS ${scripts.length} SCRIPTS`}
+    </button>
+  );
+}
+
+function ScriptCardImpl({ script, index }: { script: Script; index: number }) {
   const [expanded, setExpanded] = useState(index === 0);
   const [copied, setCopied] = useState(false);
 
   const copy = () => {
-    const full = `[${script.angulo}]\n\nHOOK: ${script.hook}\n\nAGITAÇÃO: ${script.agitacao}\n\nVIRADA: ${script.virada}\n\nPROVA: ${script.prova}\n\nCTA: ${script.cta}`;
-    navigator.clipboard.writeText(full);
+    navigator.clipboard.writeText(formatScript(script));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -482,35 +540,45 @@ function CriativoOS() {
         );
       }
 
-      const a = parsed.analise as Partial<Analise> | undefined;
-      const g = parsed.guia_producao as Partial<GuiaProducao> | undefined;
-      const validAnalise =
-        !!a &&
-        !!a.momento_de_vida &&
-        !!a.conversa_interna &&
-        !!a.desejo_real &&
-        !!a.objecao_principal;
-      const validGuia =
-        !!g &&
-        !!g.perfil_avatar &&
-        !!g.voz &&
-        !!g.visual &&
-        !!g.edicao &&
-        Array.isArray(g.checklist);
-      const validScripts =
-        Array.isArray(parsed.scripts) &&
-        parsed.scripts.length > 0 &&
-        parsed.scripts.every((s) => s && s.hook && s.cta);
-      if (!validAnalise || !validScripts || !validGuia) {
+      const a = (parsed.analise ?? {}) as Partial<Analise>;
+      const g = (parsed.guia_producao ?? {}) as Partial<GuiaProducao>;
+      const rawScripts = Array.isArray(parsed.scripts) ? parsed.scripts : [];
+
+      const filledAnalise: Analise = {
+        momento_de_vida: a.momento_de_vida ?? "",
+        conversa_interna: a.conversa_interna ?? "",
+        vergonha_oculta: a.vergonha_oculta ?? "",
+        desejo_real: a.desejo_real ?? "",
+        objecao_principal: a.objecao_principal ?? "",
+      };
+      const filledGuia: GuiaProducao = {
+        perfil_avatar: g.perfil_avatar ?? "",
+        voz: g.voz ?? "",
+        visual: g.visual ?? "",
+        edicao: g.edicao ?? "",
+        checklist: Array.isArray(g.checklist) ? g.checklist : [],
+      };
+
+      if (rawScripts.length === 0) {
         throw new Error(
-          "Resposta parcial do Claude (faltam campos). Tente novamente.",
+          "Claude não retornou nenhum script. Tente novamente.",
         );
       }
 
-      setAnalise(parsed.analise);
-      setScripts(parsed.scripts);
-      setGuiaProducao(parsed.guia_producao);
+      setAnalise(filledAnalise);
+      setScripts(rawScripts);
+      setGuiaProducao(filledGuia);
       setStep("analise");
+
+      const partial =
+        !a.momento_de_vida ||
+        !g.perfil_avatar ||
+        rawScripts.some((s) => !s?.hook || !s?.cta);
+      if (partial) {
+        setError(
+          "Resposta parcial do Claude — alguns campos vieram vazios. Considere gerar de novo.",
+        );
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erro ao gerar scripts.";
       setError(msg);
@@ -556,7 +624,7 @@ function CriativoOS() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-6 py-10">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         <ProgressBar step={step} />
 
         {/* HERO + BRIEFING */}
@@ -831,7 +899,7 @@ function CriativoOS() {
         {/* SCRIPTS */}
         {step === "scripts" && scripts.length > 0 && (
           <div className="animate-co-fade-up">
-            <div className="mb-8 flex justify-between items-end gap-4">
+            <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
               <div>
                 <h2 className="font-display text-3xl sm:text-4xl mb-2">
                   {scripts.length} SCRIPTS{" "}
@@ -844,7 +912,7 @@ function CriativoOS() {
               <button
                 type="button"
                 onClick={() => setStep("analise")}
-                className="px-4 py-2 rounded-sm text-[11px] font-mono-tech shrink-0"
+                className="px-4 py-2 rounded-sm text-[11px] font-mono-tech shrink-0 self-start sm:self-auto"
                 style={{
                   background: "transparent",
                   border: "1px solid var(--co-border)",
@@ -854,6 +922,8 @@ function CriativoOS() {
                 ← ANÁLISE
               </button>
             </div>
+
+            <CopyAllButton scripts={scripts} />
 
             {scripts.map((s, i) => (
               <ScriptCard key={i} script={s} index={i} />
