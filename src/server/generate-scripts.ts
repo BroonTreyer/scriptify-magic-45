@@ -55,14 +55,49 @@ Responda APENAS com um JSON válido (sem markdown, sem texto fora do JSON) no se
   }
 }
 
-Gere exatamente ${b.numScripts} scripts com ângulos diferentes: vergonha oculta, situação cotidiana específica, história de terceiro, consequência futura se nada mudar, e quebra de crença limitante.`;
+Gere exatamente ${b.numScripts} scripts com ângulos diferentes: vergonha oculta, situação cotidiana específica, história de terceiro, consequência futura se nada mudar, e quebra de crença limitante.
+
+IMPORTANTE: Seja CONCISO. Cada campo (hook, agitacao, virada, prova, cta) deve ter no máximo 2-3 frases curtas. Estratégia em 1-2 frases. Não enrole.
+
+CRÍTICO DE FORMATO: Comece sua resposta DIRETAMENTE com { e termine com }. Nada antes, nada depois. Sem markdown, sem \`\`\`json, sem explicação. Apenas JSON válido puro.`;
 }
 
 export function extractJson(text: string): string {
-  const cleaned = text.replace(/```json|```/g, "").trim();
-  if (cleaned.startsWith("{")) return cleaned;
+  let cleaned = text.replace(/```json|```/g, "").trim();
   const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start !== -1 && end > start) return cleaned.slice(start, end + 1);
-  return cleaned;
+  if (start > 0) cleaned = cleaned.slice(start);
+  else if (start === -1) return cleaned;
+
+  // If JSON looks complete, return as-is
+  const lastClose = cleaned.lastIndexOf("}");
+  if (lastClose !== -1) {
+    const candidate = cleaned.slice(0, lastClose + 1);
+    try {
+      JSON.parse(candidate);
+      return candidate;
+    } catch {
+      /* fall through to repair */
+    }
+  }
+
+  // Attempt to repair truncated JSON by closing open brackets/strings
+  let inString = false;
+  let escape = false;
+  const stack: string[] = [];
+  for (let i = 0; i < cleaned.length; i++) {
+    const c = cleaned[i];
+    if (escape) { escape = false; continue; }
+    if (c === "\\") { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === "{") stack.push("}");
+    else if (c === "[") stack.push("]");
+    else if (c === "}" || c === "]") stack.pop();
+  }
+  let repaired = cleaned;
+  // Trim trailing garbage after last structural char
+  repaired = repaired.replace(/,\s*$/, "");
+  if (inString) repaired += '"';
+  while (stack.length) repaired += stack.pop();
+  return repaired;
 }
