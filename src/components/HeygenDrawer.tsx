@@ -57,6 +57,7 @@ export function HeygenDrawer({
   const [ratio, setRatio] = useState<HeygenRatio>("9:16");
   const [speed, setSpeed] = useState<number>(0.92);
   const [avatarQuery, setAvatarQuery] = useState<string>("");
+  const [avatarTab, setAvatarTab] = useState<"public" | "custom">("public");
 
   const [phase, setPhase] = useState<Phase>("config");
   const [videoId, setVideoId] = useState<string | null>(null);
