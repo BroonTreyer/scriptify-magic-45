@@ -1,46 +1,116 @@
 
 
-## Atualizar prompt do Claude com framework completo do copywriter
+## Integração HeyGen — Produzir vídeo direto no CriativoOS
 
-### O que muda
+### ⚠ Aviso importante sobre segurança da chave
 
-Substituir o `buildPrompt` em `src/server/generate-scripts.ts` para incluir o framework completo que você passou: análise estratégica detalhada, regras absolutas do copywriter, estrutura detalhada de cada bloco do script (hook/agitação/virada/prova/cta com instruções específicas), variações obrigatórias entre scripts, e o checklist de qualidade.
+Você pediu `VITE_HEYGEN_API_KEY` (browser-direct). Isso **expõe sua chave do HeyGen no bundle público** — qualquer um abre o site, pega a chave do JS, e gasta seus créditos. Mesma situação que conversamos com a Anthropic.
 
-### Como vou montar
+**Recomendação:** seguir o mesmo padrão seguro já usado pra Anthropic — chave fica no servidor (`HEYGEN_API_KEY`, sem `VITE_`) e o browser chama rotas proxy `/api/public/heygen/*`. Mantém a UX idêntica.
 
-O prompt novo terá esta ordem:
+Vou implementar do jeito **seguro** por padrão. Se preferir browser-direct, é só pedir e troco.
 
-1. **Persona do copywriter** — 15 anos, performance BR, R$50M, regras absolutas (nada de "incrível/revolucionário", nada de pergunta retórica óbvia, nada de "Problema→Solução→CTA mecânico", soar como bar não palco, cada frase ganhar direito de existir).
+### Setup de chave
 
-2. **Briefing recebido** — interpolando os campos do `BriefingInput` (produto, público, dor, transformação, prova, tom, plataforma, duração, concorrente, URL).
+Vou pedir o secret `HEYGEN_API_KEY` na hora da implementação (via tool de adicionar secret). Você cola a chave uma vez e fica disponível no servidor.
 
-3. **Instruções de produção** — gerar `${b.numScripts}` scripts seguindo a estrutura detalhada de HOOK / AGITAÇÃO / VIRADA / PROVA / CTA, com as descrições completas que você passou (o que cada bloco PODE ser, o que NÃO PODE ser).
+---
 
-4. **Variações obrigatórias** — vergonha oculta, situação cotidiana, história de terceiro, consequência futura, quebra de crença.
+### Arquivos novos
 
-5. **Checklist de qualidade interno** — instruir o Claude a passar cada script pelo filtro antes de entregar (sem retornar o checklist no JSON, só usar como auto-validação).
+**`src/lib/heygen-types.ts`** — tipos compartilhados
+- `HeygenAvatar`, `HeygenVoice`, `HeygenVideoConfig`, `HeygenVideoStatus`, `GeneratedVideo`
 
-6. **Formato de saída JSON estrito** — manter o mesmo schema atual (`analise`, `scripts[]`, `guia_producao`) para não quebrar a UI. Cada script continua tendo `angulo`, `nivel_consciencia`, `duracao`, `hook`, `agitacao`, `virada`, `prova`, `cta`, `estrategia` (a `estrategia` agora consolida: ângulo + por quê + objeção neutralizada + onde performa melhor + sugestão visual).
+**`src/routes/api/public/heygen/avatars.ts`** — proxy `GET`
+- Chama `https://api.heygen.com/v2/avatars` com header `x-api-key`
+- Retorna lista normalizada `[{ avatar_id, avatar_name, preview_image_url }]`
+- Cache server-side em memória por 5min (lista raramente muda)
 
-7. **Regras de formato JSON** — manter as instruções rígidas atuais (começar com `{`, sem markdown, sem texto extra) porque são essenciais pro parser SSE não quebrar.
+**`src/routes/api/public/heygen/voices.ts`** — proxy `GET`
+- Chama `https://api.heygen.com/v2/voices`
+- Filtra `language === "Portuguese"` server-side
+- Retorna `[{ voice_id, name, gender, preview_audio }]`
+
+**`src/routes/api/public/heygen/generate.ts`** — proxy `POST`
+- Recebe `{ avatar_id, voice_id, text, speed, ratio, resolution }`
+- Valida com Zod (texto ≤ 1500 chars, ratio em `["9:16","1:1","16:9"]`, speed 0.8–1.2)
+- Monta dimension: 9:16 → 1080×1920, 1:1 → 1080×1080, 16:9 → 1920×1080 (1080p) ou metade (720p)
+- Chama `POST https://api.heygen.com/v2/video/generate` com o body que você listou
+- Retorna `{ video_id }`
+- Tratamento de erros HeyGen: 401 (chave inválida), 402/insufficient credits, 400 (validação), genérico
+
+**`src/routes/api/public/heygen/status.$videoId.ts`** — proxy `GET`
+- Chama `https://api.heygen.com/v1/video_status.get?video_id={id}`
+- Retorna `{ status, video_url?, thumbnail_url?, duration?, error? }`
+
+**`src/components/HeygenDrawer.tsx`** — painel lateral (drawer) usando `src/components/ui/drawer.tsx` que já existe
+- Estado interno: `selectedAvatar`, `selectedVoice`, `resolution`, `ratio`, `speed`, `phase` (`config | generating | polling | done | error`), `videoId`, `videoUrl`, `errorMsg`
+- Carrega avatares e vozes via `fetch` no mount (loading skeletons)
+- Grid 3 colunas de avatares (clicável, borda vermelha quando selecionado)
+- Lista de vozes PT-BR com botão ▶ preview (`<audio>` lazy)
+- Toggle 720p/1080p, toggle 9:16/1:1/16:9, slider 0.8–1.2 step 0.02 (default 0.92)
+- Botão "GERAR VÍDEO ⚡" → POST `/generate` → guarda `video_id` → inicia polling 5s
+- Polling com `useEffect` + `setTimeout` (não interval — evita race), para em `completed`/`failed` ou após 5min (timeout msg específico)
+- Estados de UI:
+  - `pending`: "Na fila..." + dots animados
+  - `processing`: "Renderizando..." + barra animada (progresso indeterminado, gradiente vermelho deslizante)
+  - `completed`: `<video controls>` inline + botão "BAIXAR VÍDEO" (link `download`)
+  - `failed`: caixa vermelha com mensagem
+- Texto enviado: `[hook, agitacao, virada, prova, cta].filter(Boolean).join(" ")`. Se > 1500 chars, trunca preservando frases inteiras até onde couber e mostra warning "Texto truncado para caber no limite do HeyGen (1500 chars)"
+- Quando `done`, chama `onVideoReady({ videoId, videoUrl, generatedAt })` pra atualizar o card pai
+
+### Arquivos editados
+
+**`src/routes/index.tsx`**
+- Adicionar estado `generatedVideos: Record<number, GeneratedVideo>` (key = índice do script) no `CriativoOS`
+- Adicionar estado `producingIndex: number | null` (controla qual drawer está aberto)
+- No `ScriptCardImpl`: receber props `onProduce`, `generatedVideo`
+  - Botão extra "🎬 PRODUZIR VÍDEO" ao lado do "COPIAR" (mesmo estilo, destaque vermelho)
+  - Se `generatedVideo` existir, mostrar badge verde "✓ VÍDEO GERADO" + link download + timestamp formatado (ex: "há 3 min" ou "22/04 14:30")
+- Renderizar `<HeygenDrawer>` controlado pelo `CriativoOS` quando `producingIndex !== null`, passando o script selecionado
+- `onVideoReady` salva no `generatedVideos[index]`
+
+### Fluxo end-to-end
+
+```text
+[Card Script]
+   │
+   ├─ COPIAR (já existe)
+   └─ 🎬 PRODUZIR VÍDEO ──► [Drawer abre]
+                              │
+                              ├─ GET /avatars  ─► grid 3 col
+                              ├─ GET /voices   ─► lista PT-BR
+                              ├─ Configs       ─► 720/1080, 9:16/1:1/16:9, slider
+                              │
+                              └─ GERAR ⚡ ─► POST /generate ─► video_id
+                                              │
+                                              └─ poll /status a cada 5s
+                                                    ├─ pending/processing → spinner+barra
+                                                    ├─ completed → <video> + download
+                                                    └─ failed → erro vermelho
+                                                          │
+                                                    onVideoReady ─► card mostra badge verde
+```
+
+### Tratamento de erros (centralizado nos proxies)
+
+| Cenário | Mensagem |
+|---|---|
+| `HEYGEN_API_KEY` ausente | "HeyGen não configurado. Adicione a chave em Settings." |
+| 401 do HeyGen | "Chave HeyGen inválida. Verifique em heygen.com." |
+| 402 / insufficient credits | "Créditos insuficientes no HeyGen. Recarregue em heygen.com." |
+| 400 / validação | mostra mensagem da API |
+| Polling > 5min | "A renderização está demorando. Verifique em heygen.com." |
+| Erro genérico | mostra `code` + `message` do HeyGen |
 
 ### O que NÃO muda
 
-- Schema do JSON de saída (mantém compatível com `Analise`, `Script`, `GuiaProducao` em `src/lib/criativo-types.ts`).
-- `extractJson` / `repairJson`.
-- Rota `/api/public/generate-scripts` (continua proxy server-side com `claude-sonnet-4-5` e `max_tokens: 16000`).
-- UI em `src/routes/index.tsx` (cards, copiar, navegação).
-- Visual (preto, vermelho, fontes).
+- Visual (preto, vermelho, fontes Bebas / DM Sans / Space Mono)
+- Fluxo de geração de scripts (Anthropic) intocado
+- Etapas 1, 2 e 4 sem mudança
+- Schema dos tipos existentes em `criativo-types.ts`
 
-### Trade-off importante
+### Confirmação antes de implementar
 
-O prompt vai ficar ~3x mais longo (gasta ~1.5k tokens só de input). Isso é aceitável — Claude segue melhor instruções detalhadas e a qualidade dos scripts vai subir bastante. Não impacta o `max_tokens` de saída.
-
-### Arquivos alterados
-
-- `src/server/generate-scripts.ts` — só a função `buildPrompt` (mantém `extractJson` e `repairJson` intactos).
-
-### Resultado
-
-Scripts mais afiados, com voz real de copywriter BR, variações de ângulo garantidas, e estrutura de bloco respeitada. A UI exibe tudo igual — só o conteúdo gerado fica melhor.
+Sigo com **proxy seguro server-side + secret `HEYGEN_API_KEY`** (vou solicitar a chave na próxima etapa). Se quiser browser-direct expondo `VITE_HEYGEN_API_KEY` mesmo assim, me avisa antes.
 
