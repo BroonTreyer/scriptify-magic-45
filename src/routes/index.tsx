@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { generateScripts } from "@/server/generate-scripts";
+import { extractJson } from "@/server/generate-scripts";
 import type {
   Analise,
   BriefingInput,
