@@ -1,101 +1,80 @@
 
-## Corrigir o falso erro “Resposta do Claude está incompleta”
 
-### Problema real
+## Ajustes no CriativoOS
 
-O erro atual não parece mais ser “falta de tokens” como causa principal. Pelo fluxo atual, o problema mais provável está no **parser do stream no cliente**:
+Vou aplicar os 8 ajustes pedidos. **Antes**, um ponto importante sobre o item 1 (headers da Anthropic):
 
-1. O código lê o SSE quebrando por `\n`, não por **blocos SSE completos** (`\n\n`).
-2. Quando o stream termina, o **resto do buffer final não é processado**.
-3. Isso pode fazer o app **perder o `message_delta.stop_reason` e o `message_stop`**, ou até o último trecho do JSON.
-4. Depois disso, `extractJson()` tenta “consertar” o JSON truncado fechando chaves automaticamente, o que transforma uma resposta cortada em um JSON “válido porém incompleto”.
-5. Resultado: em vez de mostrar “stream foi interrompido” ou “Claude bateu no limite”, a UI cai no erro genérico:
-   - `Resposta do Claude está incompleta. Tente novamente.`
+### ⚠ Sobre chamar a Anthropic direto do browser
 
-### O que vou mudar
+Você pediu para usar `import.meta.env.VITE_ANTHROPIC_API_KEY` + header `anthropic-dangerous-direct-browser-access`. Isso **expõe sua chave da Anthropic publicamente** — qualquer pessoa que abrir o site pode pegar a chave do bundle e gastar seus créditos. O próprio nome do header ("dangerous") é o aviso da Anthropic.
 
-#### 1. Reescrever o parser SSE no cliente
-Em `src/routes/index.tsx`:
+Hoje o sistema já funciona do jeito **seguro**: a chave (`ANTHROPIC_API_KEY`, sem `VITE_`) fica só no servidor, e o browser chama `/api/public/generate-scripts` que faz proxy do streaming. Mesmas headers que você listou já são aplicadas lá dentro — só que escondidas do público.
 
-- Trocar o parser atual baseado em linhas por um parser de **eventos SSE completos**.
-- Acumular chunks em `buffer` e processar por separador de evento `\n\n`.
-- Ler corretamente:
-  - `content_block_delta`
-  - `message_delta`
-  - `message_stop`
-  - `ping`
-- Fazer **flush do buffer restante no final** antes de concluir a leitura.
+**Recomendação:** manter o proxy server-side atual e ignorar o item 1. Os outros 7 ajustes vão todos do mesmo jeito.
 
-### 2. Só aceitar sucesso se o stream terminou de verdade
-Ainda em `src/routes/index.tsx`:
+Se mesmo assim quiser browser-direct (ex: app interno, demo rápido), eu troco — mas saiba que vai ter que rotacionar a chave depois e que os streams do browser vão começar a expor sua quota.
 
-- Rastrear:
-  - `stopReason`
-  - `sawMessageStop`
-  - `receivedAnyContent`
-- Antes de fazer `JSON.parse`, validar que o stream realmente chegou ao fim.
-- Se `message_stop` não vier, mostrar erro específico, por exemplo:
-  - `A conexão com o Claude foi interrompida antes do fim da resposta. Tente novamente.`
-- Se `stop_reason === "max_tokens"`, manter a mensagem específica de limite.
-- Se houver `end_turn` mas o JSON estiver inválido, mostrar:
-  - `Claude retornou JSON inválido. Tente novamente.`
+---
 
-### 3. Parar de “mascarar” resposta truncada como se fosse válida
-Em `src/server/generate-scripts.ts`:
+### Mudanças que vou fazer (assumindo manter proxy seguro)
 
-- Separar a lógica de:
-  - **extrair JSON** de texto com lixo antes/depois
-  - **reparar JSON truncado**
-- O fluxo principal deve usar apenas extração/limpeza leve.
-- O reparo agressivo de fechar chaves automaticamente não deve ser a defesa padrão para resposta de stream, porque hoje ele esconde o erro real.
-- Se eu mantiver a função de repair, ela fica como fallback controlado e só quando fizer sentido.
+**`src/routes/index.tsx`:**
 
-### 4. Fortalecer a validação da estrutura recebida
-Em `src/routes/index.tsx`:
+1. **Loading com mensagens rotativas** — já existe (`LOADING_MSGS` + `setInterval` a cada 2.5s). Vou só confirmar que está ativo e rotacionando os 5 textos exatos que você listou (já estão idênticos).
 
-- Validar explicitamente:
-  - `analise` com os campos esperados
-  - `scripts` como array não vazio
-  - `guia_producao` com `perfil_avatar`, `voz`, `visual`, `edicao`, `checklist`
-- Opcionalmente validar se o número de scripts retornado bate com `form.numScripts`.
-- Se vier menos conteúdo do que o esperado, mostrar erro claro de resposta parcial em vez de seguir o fluxo.
+2. **Copiar script completo (formato novo)** — substituir o `copy()` do `ScriptCard` para gerar:
+   ```
+   HOOK (0–3s):
+   [hook]
 
-### 5. Manter a UX atual, mas com diagnóstico correto
-A UI continua praticamente igual:
-- preview do streaming continua
-- botão e loading continuam
-- só melhoram as mensagens de erro
+   AGITAÇÃO (3–15s):
+   [agitacao]
 
-Mensagens finais ficam separadas por causa real:
-- limite de tokens
-- stream interrompido
-- JSON inválido
-- resposta parcial/incompleta
+   VIRADA (15–20s):
+   [virada]
 
-### Arquivos afetados
+   PROVA (20–35s):
+   [prova]
 
-- `src/routes/index.tsx`
-  - parser SSE robusto
-  - flush do buffer final
-  - rastreamento de `message_stop`
-  - tratamento de erro mais preciso
-  - validação estrutural mais forte
+   CTA (últimos 5s):
+   [cta]
 
-- `src/server/generate-scripts.ts`
-  - refatorar `extractJson`
-  - remover o repair agressivo do caminho principal
-  - deixar parsing mais seguro para resposta de stream
+   ÂNGULO: [angulo]
+   NOTA ESTRATÉGICA: [estrategia]
+   ```
 
-- `src/routes/api/public/generate-scripts.ts`
-  - ajuste pequeno só se necessário para manter headers de streaming consistentes
-  - a principal correção não está aqui; está no cliente
+3. **Botão "COPIAR TODOS"** — adicionar acima da lista de cards na etapa `scripts`. Concatena todos os scripts numerados (`#1`, `#2`...) usando o mesmo formato do item 2, separados por `---`. Estado `copied` próprio + feedback visual.
 
-### Resultado esperado
+4. **Navegação ← / → entre as 4 etapas** — hoje:
+   - briefing → análise: ok (botão "Gerar")
+   - análise ↔ scripts: ok
+   - scripts → produção: ok, mas **falta voltar de scripts pra análise no header** (já tem botão "← ANÁLISE", ok) e **falta um ← na etapa produção** voltando pra scripts.
+   Vou auditar e garantir que cada etapa tenha botão ← e → consistentes.
 
-Depois dessa correção, o sistema vai distinguir corretamente entre:
-- resposta completa do Claude
-- resposta cortada/interrompida
-- limite de tokens
-- JSON realmente inválido
+5. **Responsivo mobile do briefing** — o grid já usa `grid-cols-1 sm:grid-cols-2`, mas vou:
+   - Garantir padding lateral adequado em telas pequenas (`px-4 sm:px-6`)
+   - Reduzir tamanho do hero h2 no mobile (já tem `text-5xl sm:text-6xl`, ok)
+   - Verificar que ChoiceGroup quebra bem (já tem `flex-wrap`, ok)
+   - Ajustar header da etapa scripts (`flex justify-between` pode apertar no mobile) — mudar para `flex-col sm:flex-row`
 
-Isso elimina o falso positivo de “resposta incompleta” causado pelo parser atual e evita que JSON truncado seja aceito como se fosse apenas “parcial”.
+6. **Error handling melhor** — já mostra mensagens específicas (max_tokens, JSON inválido, conexão interrompida, parcial). Vou adicionar: se o JSON parsear parcialmente (tem `analise` mas falta `guia_producao`, por exemplo), mostrar o que tiver em vez de bloquear tudo — fallbacks vazios para campos faltantes em vez de jogar erro.
+
+**`src/routes/api/public/generate-scripts.ts`:** sem mudança (continua proxy server-side).
+
+**`src/server/generate-scripts.ts`:** sem mudança (prompt e helpers já estão bons).
+
+### Estilo
+Sem mudanças visuais — mantém `#080808`, `#ff2d2d`, Bebas Neue / DM Sans / Space Mono.
+
+### Modelo
+Já está em `claude-sonnet-4-5` com `max_tokens: 16000` (mais novo e maior que o `claude-sonnet-4-20250514` / 4000 que você citou). Mantenho como está, a menos que prefira reverter.
+
+### Arquivos alterados
+- `src/routes/index.tsx` (itens 2, 3, 4, 5, 6 + ajustes mobile)
+
+### Confirme antes de eu implementar
+- [ ] Manter proxy seguro server-side (recomendado) **OU** mudar para browser-direct expondo a chave?
+- [ ] Manter `claude-sonnet-4-5` + 16000 tokens **OU** voltar para `claude-sonnet-4-20250514` + 4000?
+
+Se não responder, sigo com **proxy seguro + claude-sonnet-4-5 + 16000 tokens** e implemento os 7 ajustes restantes.
+
