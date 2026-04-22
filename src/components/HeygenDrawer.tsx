@@ -262,6 +262,20 @@ export function HeygenDrawer({
             <div className="text-[11px] font-bold font-mono uppercase tracking-widest mb-3" style={labelStyle}>
               Avatar
             </div>
+            {!loadingMeta && avatars.length > 0 && (
+              <input
+                type="text"
+                value={avatarQuery}
+                onChange={(e) => setAvatarQuery(e.target.value)}
+                placeholder="Buscar avatar..."
+                className="w-full mb-3 px-3 py-2 rounded text-[12px] font-mono outline-none"
+                style={{
+                  background: "var(--co-surface)",
+                  border: "1px solid var(--co-border)",
+                  color: "var(--co-text)",
+                }}
+              />
+            )}
             {loadingMeta ? (
               <div className="grid grid-cols-3 gap-2">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -274,7 +288,13 @@ export function HeygenDrawer({
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
-                {avatars.map((a) => {
+                {avatars
+                  .filter((a) =>
+                    avatarQuery.trim()
+                      ? a.avatar_name.toLowerCase().includes(avatarQuery.trim().toLowerCase())
+                      : true,
+                  )
+                  .map((a) => {
                   const active = selectedAvatar === a.avatar_id;
                   return (
                     <button
@@ -313,6 +333,15 @@ export function HeygenDrawer({
                     Nenhum avatar disponível.
                   </div>
                 )}
+                {avatars.length > 0 &&
+                  avatarQuery.trim() &&
+                  avatars.filter((a) =>
+                    a.avatar_name.toLowerCase().includes(avatarQuery.trim().toLowerCase()),
+                  ).length === 0 && (
+                    <div className="col-span-3 text-xs font-mono" style={labelStyle}>
+                      Nenhum avatar para "{avatarQuery}".
+                    </div>
+                  )}
               </div>
             )}
           </section>
