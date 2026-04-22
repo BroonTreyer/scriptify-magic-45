@@ -405,40 +405,67 @@ function CriativoOS() {
       // Prefilled with "{" on the server side
       let fullText = "{";
       let stopReason: string | null = null;
+      let sawMessageStop = false;
+      let receivedAnyContent = false;
       setStreamingText(fullText);
+
+      const processEvent = (block: string) => {
+        // An SSE event block can have multiple lines like "event: ..." and "data: ..."
+        const dataLines = block
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l.startsWith("data:"))
+          .map((l) => l.slice(5).trim());
+        if (dataLines.length === 0) return;
+        const payload = dataLines.join("");
+        if (!payload || payload === "[DONE]") return;
+        try {
+          const evt = JSON.parse(payload) as {
+            type?: string;
+            delta?: { type?: string; text?: string; stop_reason?: string };
+          };
+          if (evt.type === "content_block_delta" && evt.delta?.text) {
+            fullText += evt.delta.text;
+            receivedAnyContent = true;
+            setStreamingText(fullText);
+          } else if (evt.type === "message_delta" && evt.delta?.stop_reason) {
+            stopReason = evt.delta.stop_reason;
+          } else if (evt.type === "message_stop") {
+            sawMessageStop = true;
+          }
+        } catch {
+          /* ignore non-JSON keepalives */
+        }
+      };
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith("data:")) continue;
-          const payload = trimmed.slice(5).trim();
-          if (!payload || payload === "[DONE]") continue;
-          try {
-            const evt = JSON.parse(payload) as {
-              type?: string;
-              delta?: { type?: string; text?: string; stop_reason?: string };
-            };
-            if (evt.type === "content_block_delta" && evt.delta?.text) {
-              fullText += evt.delta.text;
-              setStreamingText(fullText);
-            }
-            if (evt.type === "message_delta" && evt.delta?.stop_reason) {
-              stopReason = evt.delta.stop_reason;
-            }
-          } catch {
-            /* ignore non-JSON keepalives */
-          }
-        }
+        // Split by complete SSE event blocks (separated by blank line)
+        const blocks = buffer.split(/\r?\n\r?\n/);
+        buffer = blocks.pop() ?? "";
+        for (const block of blocks) processEvent(block);
       }
+      // Flush any remaining bytes from the decoder + final buffered block
+      buffer += decoder.decode();
+      if (buffer.trim().length > 0) processEvent(buffer);
 
       if (stopReason === "max_tokens") {
         throw new Error(
           "Claude atingiu o limite de tokens. Tente reduzir para 3 scripts e gerar de novo.",
+        );
+      }
+
+      if (!receivedAnyContent) {
+        throw new Error(
+          "A conexão com o Claude foi interrompida antes de qualquer resposta. Tente novamente.",
+        );
+      }
+
+      if (!sawMessageStop) {
+        throw new Error(
+          "A conexão com o Claude foi interrompida antes do fim da resposta. Tente novamente.",
         );
       }
 
@@ -451,12 +478,33 @@ function CriativoOS() {
         parsed = JSON.parse(extractJson(fullText));
       } catch {
         throw new Error(
-          "Claude retornou JSON inválido. Tente novamente — se persistir, reduza o número de scripts.",
+          "Claude retornou JSON inválido. Tente novamente.",
         );
       }
 
-      if (!parsed.analise || !Array.isArray(parsed.scripts) || !parsed.guia_producao) {
-        throw new Error("Resposta do Claude está incompleta. Tente novamente.");
+      const a = parsed.analise as Partial<Analise> | undefined;
+      const g = parsed.guia_producao as Partial<GuiaProducao> | undefined;
+      const validAnalise =
+        !!a &&
+        !!a.momento_de_vida &&
+        !!a.conversa_interna &&
+        !!a.desejo_real &&
+        !!a.objecao_principal;
+      const validGuia =
+        !!g &&
+        !!g.perfil_avatar &&
+        !!g.voz &&
+        !!g.visual &&
+        !!g.edicao &&
+        Array.isArray(g.checklist);
+      const validScripts =
+        Array.isArray(parsed.scripts) &&
+        parsed.scripts.length > 0 &&
+        parsed.scripts.every((s) => s && s.hook && s.cta);
+      if (!validAnalise || !validScripts || !validGuia) {
+        throw new Error(
+          "Resposta parcial do Claude (faltam campos). Tente novamente.",
+        );
       }
 
       setAnalise(parsed.analise);
