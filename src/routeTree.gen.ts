@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicGenerateScriptsRouteImport } from './routes/api/public/generate-scripts'
+import { Route as ApiPublicExtractUrlRouteImport } from './routes/api/public/extract-url'
 import { Route as ApiPublicHeygenVoicesRouteImport } from './routes/api/public/heygen/voices'
 import { Route as ApiPublicHeygenGenerateRouteImport } from './routes/api/public/heygen/generate'
 import { Route as ApiPublicHeygenAvatarsRouteImport } from './routes/api/public/heygen/avatars'
@@ -27,6 +28,11 @@ const ApiPublicGenerateScriptsRoute =
     path: '/api/public/generate-scripts',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicExtractUrlRoute = ApiPublicExtractUrlRouteImport.update({
+  id: '/api/public/extract-url',
+  path: '/api/public/extract-url',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHeygenVoicesRoute = ApiPublicHeygenVoicesRouteImport.update({
   id: '/api/public/heygen/voices',
   path: '/api/public/heygen/voices',
@@ -51,6 +57,7 @@ const ApiPublicHeygenStatusVideoIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
@@ -68,6 +76,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api/public/extract-url'
     | '/api/public/generate-scripts'
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api/public/extract-url'
     | '/api/public/generate-scripts'
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/api/public/extract-url'
     | '/api/public/generate-scripts'
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
@@ -103,6 +115,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicExtractUrlRoute: typeof ApiPublicExtractUrlRoute
   ApiPublicGenerateScriptsRoute: typeof ApiPublicGenerateScriptsRoute
   ApiPublicHeygenAvatarsRoute: typeof ApiPublicHeygenAvatarsRoute
   ApiPublicHeygenGenerateRoute: typeof ApiPublicHeygenGenerateRoute
@@ -124,6 +137,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/generate-scripts'
       fullPath: '/api/public/generate-scripts'
       preLoaderRoute: typeof ApiPublicGenerateScriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/extract-url': {
+      id: '/api/public/extract-url'
+      path: '/api/public/extract-url'
+      fullPath: '/api/public/extract-url'
+      preLoaderRoute: typeof ApiPublicExtractUrlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/heygen/voices': {
@@ -159,6 +179,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicExtractUrlRoute: ApiPublicExtractUrlRoute,
   ApiPublicGenerateScriptsRoute: ApiPublicGenerateScriptsRoute,
   ApiPublicHeygenAvatarsRoute: ApiPublicHeygenAvatarsRoute,
   ApiPublicHeygenGenerateRoute: ApiPublicHeygenGenerateRoute,
