@@ -62,7 +62,6 @@ IMPORTANTE: Seja CONCISO. Cada campo (hook, agitacao, virada, prova, cta) deve t
 CRÍTICO DE FORMATO: Comece sua resposta DIRETAMENTE com { e termine com }. Nada antes, nada depois. Sem markdown, sem \`\`\`json, sem explicação. Apenas JSON válido puro.`;
 }
 
-export function extractJson(text: string): string {
 /**
  * Lightweight extraction: strips markdown fences and any text before the
  * first '{' / after the last '}'. Does NOT attempt to repair truncated JSON
