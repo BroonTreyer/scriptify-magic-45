@@ -62,12 +62,9 @@ IMPORTANTE: Seja CONCISO. Cada campo (hook, agitacao, virada, prova, cta) deve t
 CRÍTICO DE FORMATO: Comece sua resposta DIRETAMENTE com { e termine com }. Nada antes, nada depois. Sem markdown, sem \`\`\`json, sem explicação. Apenas JSON válido puro.`;
 }
 
-/**
- * Lightweight extraction: strips markdown fences and any text before the
- * first '{' / after the last '}'. Does NOT attempt to repair truncated JSON
- * — that would mask real stream interruptions. Use `repairJson` explicitly
- * as a controlled fallback if needed.
- */
+// Lightweight extraction: strips markdown fences and any text before the
+// first opening brace / after the last closing brace. Does NOT repair
+// truncated JSON — that would mask real stream interruptions.
 export function extractJson(text: string): string {
   let cleaned = text.replace(/```json|```/g, "").trim();
   const start = cleaned.indexOf("{");
@@ -78,12 +75,8 @@ export function extractJson(text: string): string {
   return cleaned;
 }
 
-/**
- * Last-resort repair: closes open strings and brackets so a truncated
- * payload can at least be parsed. Should NOT be used silently in the
- * main flow — only as an explicit fallback when the caller decides
- * partial data is acceptable.
- */
+// Last-resort repair: closes open strings and brackets so a truncated
+// payload can at least be parsed. Use only as an explicit fallback.
 export function repairJson(text: string): string {
   let cleaned = text.replace(/```json|```/g, "").trim();
   const start = cleaned.indexOf("{");
