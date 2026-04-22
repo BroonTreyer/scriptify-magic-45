@@ -15,6 +15,8 @@ import type {
 } from "@/lib/heygen-types";
 import type { Script } from "@/lib/criativo-types";
 import { PhotoAvatarUpload } from "@/components/PhotoAvatarUpload";
+import { VoiceCloneUpload } from "@/components/VoiceCloneUpload";
+import { isCustomVoiceId } from "@/lib/custom-voices-storage";
 
 function buildScriptText(s: Script): { text: string; truncated: boolean } {
   const raw = [s.hook, s.agitacao, s.virada, s.prova, s.cta]
@@ -58,6 +60,7 @@ export function HeygenDrawer({
   const [speed, setSpeed] = useState<number>(0.92);
   const [avatarQuery, setAvatarQuery] = useState<string>("");
   const [avatarTab, setAvatarTab] = useState<"public" | "custom">("public");
+  const [voiceTab, setVoiceTab] = useState<"public" | "custom">("public");
 
   const [phase, setPhase] = useState<Phase>("config");
   const [videoId, setVideoId] = useState<string | null>(null);
