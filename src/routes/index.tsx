@@ -601,7 +601,9 @@ function CriativoOS() {
   const [error, setError] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState("");
   const [producingIndex, setProducingIndex] = useState<number | null>(null);
+  const [producingScript, setProducingScript] = useState<Script | null>(null);
   const [generatedVideos, setGeneratedVideos] = useState<Record<number, GeneratedVideo>>({});
+  const [translations, setTranslations] = useState<TranslationMap>({});
   const [historyOpen, setHistoryOpen] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
   const [ugcOpen, setUgcOpen] = useState(false);
