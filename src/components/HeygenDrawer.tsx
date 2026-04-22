@@ -55,6 +55,7 @@ export function HeygenDrawer({
   const [resolution, setResolution] = useState<HeygenResolution>("1080p");
   const [ratio, setRatio] = useState<HeygenRatio>("9:16");
   const [speed, setSpeed] = useState<number>(0.92);
+  const [avatarQuery, setAvatarQuery] = useState<string>("");
 
   const [phase, setPhase] = useState<Phase>("config");
   const [videoId, setVideoId] = useState<string | null>(null);
@@ -81,6 +82,11 @@ export function HeygenDrawer({
     setStatusInfo(null);
     setErrorMsg(null);
   }, [open, script]);
+
+  // Clear avatar search when drawer closes
+  useEffect(() => {
+    if (!open) setAvatarQuery("");
+  }, [open]);
 
   // Load avatars + voices on first open
   useEffect(() => {
