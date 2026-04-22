@@ -224,8 +224,25 @@ function ChoiceGroup({
   );
 }
 
-function ScriptCard({ script, index }: { script: Script; index: number }) {
-  return <ScriptCardImpl script={script} index={index} />;
+function ScriptCard({
+  script,
+  index,
+  onProduce,
+  generatedVideo,
+}: {
+  script: Script;
+  index: number;
+  onProduce: (i: number) => void;
+  generatedVideo?: GeneratedVideo;
+}) {
+  return (
+    <ScriptCardImpl
+      script={script}
+      index={index}
+      onProduce={onProduce}
+      generatedVideo={generatedVideo}
+    />
+  );
 }
 
 function CopyAllButton({ scripts }: { scripts: Script[] }) {
@@ -255,7 +272,31 @@ function CopyAllButton({ scripts }: { scripts: Script[] }) {
   );
 }
 
-function ScriptCardImpl({ script, index }: { script: Script; index: number }) {
+function formatRelative(iso: string): string {
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "agora";
+  if (min < 60) return `há ${min} min`;
+  return d.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function ScriptCardImpl({
+  script,
+  index,
+  onProduce,
+  generatedVideo,
+}: {
+  script: Script;
+  index: number;
+  onProduce: (i: number) => void;
+  generatedVideo?: GeneratedVideo;
+}) {
   const [expanded, setExpanded] = useState(index === 0);
   const [copied, setCopied] = useState(false);
 
