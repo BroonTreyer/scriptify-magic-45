@@ -1133,6 +1133,18 @@ function CriativoOS() {
           </div>
         )}
       </main>
+      <HeygenDrawer
+        open={producingIndex !== null}
+        onOpenChange={(v) => {
+          if (!v) setProducingIndex(null);
+        }}
+        script={producingIndex !== null ? (scripts[producingIndex] ?? null) : null}
+        onVideoReady={(v) => {
+          if (producingIndex !== null) {
+            setGeneratedVideos((prev) => ({ ...prev, [producingIndex]: v }));
+          }
+        }}
+      />
     </div>
   );
 }
