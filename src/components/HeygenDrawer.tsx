@@ -264,6 +264,38 @@ export function HeygenDrawer({
             <div className="text-[11px] font-bold font-mono uppercase tracking-widest mb-3" style={labelStyle}>
               Avatar
             </div>
+            {/* Tabs Público / Meus */}
+            <div className="flex gap-2 mb-3">
+              {([
+                { id: "public", label: "PÚBLICOS" },
+                { id: "custom", label: "MEUS AVATARES" },
+              ] as const).map((t) => {
+                const active = avatarTab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setAvatarTab(t.id)}
+                    className="flex-1 py-2 rounded text-[11px] font-mono uppercase tracking-widest"
+                    style={{
+                      background: active ? "var(--co-red)" : "transparent",
+                      border: active ? "1px solid var(--co-red)" : "1px solid var(--co-border)",
+                      color: active ? "#fff" : "var(--co-text-dim)",
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {avatarTab === "custom" ? (
+              <PhotoAvatarUpload
+                selectedAvatarId={selectedAvatar}
+                onSelect={(id) => setSelectedAvatar(id)}
+              />
+            ) : (
+            <>
             {!loadingMeta && avatars.length > 0 && (
               <input
                 type="text"
