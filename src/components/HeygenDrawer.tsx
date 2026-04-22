@@ -295,8 +295,8 @@ export function HeygenDrawer({
                 onSelect={(id) => setSelectedAvatar(id)}
               />
             ) : (
-            <>
-            {!loadingMeta && avatars.length > 0 && (
+              <div>
+                {!loadingMeta && avatars.length > 0 && (
               <input
                 type="text"
                 value={avatarQuery}
@@ -378,7 +378,7 @@ export function HeygenDrawer({
                   )}
               </div>
             )}
-            </>
+              </div>
             )}
           </section>
 
