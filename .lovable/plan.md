@@ -1,176 +1,105 @@
 
 
-# CriativoOS v2 — Plano completo: Creatify + Vidnoz + AssemblyAI
+# Redesign completo da página inicial — CriativoOS
 
-Vou montar **TUDO num plano só**, em ordem de execução. Cada bloco entrega valor sozinho. Mantém o visual atual (preto/vermelho, Bebas/DM Sans/Space Mono).
+## Visão
 
----
+Recriar `src/routes/index.tsx` do zero, mantendo 100% da lógica e dos componentes existentes (HeygenDrawer, BatchMatrix, UGCStudio, VideoEditor, UrlExtractor, BriefingHistorySheet, ScriptCard, tradução, persistência) mas com uma **identidade visual de produto sênior**: editorial, técnica, com profundidade espacial e impacto cinematográfico — sem mexer em backend, APIs, storage ou tipos.
 
-## Bloco 1 — URL → Briefing automático ⭐ (maior salto de UX)
+**Direção estética: "Operations Console"** — um terminal criativo para diretores de performance. Inspiração: Linear, Vercel, Arc Browser, Raycast, painéis Bloomberg. Dark, denso, tipográfico, com micro-detalhes técnicos.
 
-**Inspiração:** Creatify URL-to-video.
+## Princípios de design
 
-- Novo campo no topo da etapa 1: input de URL + botão "🔗 EXTRAIR DA URL".
-- Backend: nova rota `src/routes/api/public/extract-url.ts` que usa **Firecrawl** (`scrape` com `formats: ['markdown', 'json', 'branding']`) pra raspar a página.
-- Resposta vai pro **Claude (`claude-sonnet-4-5`)** com tool use estruturado (`input_schema` JSON) pra extrair: `produto`, `publico`, `dor`, `transformacao`, `prova`, `tom sugerido`. Preenche os campos do briefing automaticamente.
-- Mantém edição manual depois do auto-fill.
-- Conector: **Firecrawl** (já documentado no contexto).
+1. **Hierarquia editorial** — display Bebas Neue gigante + serif/mono para tensão; hero com peso real, não só headline em vermelho.
+2. **Profundidade por camadas** — gradientes sutis, glow vermelho de baixa opacidade, grain noise discreto, bordas com `inset` luminoso.
+3. **Densidade técnica** — labels mono com prefixos (`[01]`, `// SYS`, `→`), métricas vivas (uptime, modelo Claude, latência simulada), ticker no header.
+4. **Movimento contido** — fade-up em cascade, hover com translate-Y mínimo, número rolante no contador de scripts, cursor blink no streaming.
+5. **Cor com restrição** — vermelho `--co-red` segue como acento único (CTAs, status, números). Adiciono apenas `--co-accent-glow` (vermelho 18% opacidade) e `--co-grid` (linhas 4% branco) no `styles.css`.
 
----
-
-## Bloco 2 — Batch Mode + comparação A/B ⭐
-
-**Inspiração:** Creatify Batch Mode.
-
-- Nova etapa opcional após scripts: "🎬 GERAR EM LOTE".
-- UI: matriz `scripts × avatares × vozes` com checkboxes. Ex: 3 scripts × 2 avatares × 2 vozes = 12 vídeos numa tacada.
-- Fila de jobs no client (estado `batchJobs[]`), polling paralelo (max 3 concorrentes pra não estourar HeyGen).
-- Tela de comparação lado-a-lado: grid de vídeos com filtros (por script, por avatar, por voz), botão "marcar vencedor" (estrela), exporta CSV com metadados.
-- Persiste no `localStorage` reutilizando `video-storage.ts`.
-
----
-
-## Bloco 3 — Avatar + Voz customizados
-
-**Inspiração:** Creatify Custom Avatar + Vidnoz Voice Clone.
-
-### 3a. Avatar customizado (HeyGen Photo Avatar)
-- Upload de foto → nova rota `src/routes/api/public/heygen/photo-avatar.ts` chama `POST /v2/photo_avatar/photo/generate` + `/v2/photo_avatar/avatar_group/create`.
-- Polling até pronto, salva `avatar_id` em localStorage (`my-avatars`).
-- Aparece como primeira aba "MEUS AVATARES" no `HeygenDrawer`, antes do grid público.
-
-### 3b. Voz clonada (ElevenLabs Instant Voice Clone)
-- Upload de áudio (30s+) → rota `src/routes/api/public/elevenlabs/clone-voice.ts` chama `POST /v1/voices/add`.
-- Salva `voice_id` em localStorage.
-- Quando uma voz clonada está selecionada, o backend de geração de vídeo vira: ElevenLabs gera o áudio MP3 → upload pra HeyGen como `audio` input em vez de `text`. Nova rota `heygen/generate-with-audio.ts`.
-- Conector: **ElevenLabs**.
-
----
-
-## Bloco 4 — Editor + música + legendas estilizadas
-
-**Inspiração:** Vidnoz editor + Creatify music library.
-
-Stack nova: **Remotion** (renderização React → MP4 server-side). Como Remotion exige Node real (Chromium), uso fallback: edição **client-side com ffmpeg.wasm** pra cortes simples + Lovable AI pra gerar SRT estilizado.
-
-- Novo botão "🎞️ EDITAR" em cada vídeo gerado → abre editor full-screen.
-- **Cortes:** trim início/fim com slider de range sobre a timeline.
-- **Música:** biblioteca curada (~30 trilhas free, royalty-free do Pixabay/Mixkit, hospedadas como assets) + opção "GERAR MÚSICA IA" via ElevenLabs Music API (prompt → MP3).
-- **Legendas:** transcrição via AssemblyAI (ver bloco 6) → editor de SRT → renderiza como burn-in com 4 templates (TikTok bounce, MrBeast, minimal, neon vermelho).
-- **B-roll:** upload de imagens/vídeos → Remotion compõe.
-- Render final: ffmpeg.wasm no client pra cortes/música; pra burn-in legenda usa Remotion Lambda OU mantém legenda como overlay HTML5 se for só preview.
-- **Honestidade:** Remotion no Worker do Cloudflare não roda (precisa Chromium). Opções: (a) renderizar só client-side (limitação: vídeos curtos, navegador trava), (b) usar Shotstack/Creatomate API (paga, ~$0.05/min). Vou propor **(b) com Shotstack** como conector externo, é o caminho viável. Se não quiser custo, fica só preview client-side sem burn-in real.
-
----
-
-## Bloco 5 — Multi-idioma + tradução de vídeo
-
-**Inspiração:** Vidnoz translator + Creatify multilingual.
-
-- Toggle no briefing: "Idiomas" → multi-select (PT-BR, EN, ES, FR, IT, DE).
-- Ao gerar scripts, Claude devolve N versões traduzidas + culturalmente adaptadas (não tradução literal).
-- Para cada idioma: aba separada nos resultados.
-- **Tradução de vídeo existente:** botão "🌍 TRADUZIR" em cada vídeo gerado → chama HeyGen Video Translate API (`POST /v2/video_translate`) que faz lip-sync no idioma alvo. Polling, aparece como vídeo novo vinculado ao original.
-
----
-
-## Bloco 6 — STT/transcrição UGC
-
-**Inspiração:** AssemblyAI Universal-3.
-
-- Nova etapa lateral "📼 ANALISAR UGC" no header.
-- Upload de vídeo/áudio (depoimento de cliente, vídeo do concorrente) → rota `src/routes/api/public/assemblyai/transcribe.ts`.
-- Usa AssemblyAI batch (`scribe_v2` equivalent) com **diarização** + **audio events** + **keyterms**.
-- Resultado: transcrição com speakers separados + insights via Lovable AI ("o que esse cliente realmente sentiu", extrai dores literais).
-- Botão "USAR NO BRIEFING": copia frases-chave pros campos de dor/transformação/prova.
-- Conector: **ElevenLabs STT** (substitui AssemblyAI — já temos no stack via knowledge, e o `scribe_v2` faz o mesmo: diarização + audio events + 99 idiomas). Economiza um conector.
-
----
-
-## Bloco 7 — Análise pós-publicação
-
-**Não existe pronto nas 3 ferramentas referência. É diferencial real.**
-
-- Conexão Meta Ads + TikTok Ads via OAuth (per-user, não connector — cada user conecta a própria conta).
-- Tabela `ad_campaigns` (Lovable Cloud): `script_id`, `video_id`, `platform`, `ad_id`, `spend`, `impressions`, `clicks`, `ctr`, `cvr`, `roas`, `synced_at`.
-- Cron edge function (a cada 6h) puxa métricas das contas conectadas.
-- Dashboard "📊 PERFORMANCE": ranking de criativos por ROAS, IA analisa padrões ("seus melhores hooks usam vergonha oculta + duração 25s") e sugere próximas variações no Batch Mode.
-- **Honesto:** isso requer Lovable Cloud habilitado + apps aprovadas no Meta/TikTok Business (processo de 1-2 semanas de aprovação deles, não nosso). Vou implementar a infra e deixar o user fazer o approval no painel deles.
-
----
-
-## Bloco 8 — Polish geral
-
-- **Histórico unificado:** o sheet atual (`BriefingHistorySheet`) vira "HISTÓRICO" com abas: Briefings | Vídeos | Batches | UGC.
-- **Persistência migrada pro Cloud:** o que hoje vive em localStorage migra opcionalmente pra Lovable Cloud (sync entre dispositivos). Mantém localStorage como fallback offline.
-- **Auth:** login email/Google via Lovable Cloud — necessário pra Meta/TikTok OAuth.
-- **Onboarding:** tour de 4 passos na primeira visita explicando URL→Briefing → Scripts → Batch → Editor.
-
----
-
-## Arquitetura nova (resumo)
+## Estrutura nova da página
 
 ```text
-src/
-├── lib/
-│   ├── briefing-storage.ts        (existe)
-│   ├── video-storage.ts           (existe)
-│   ├── batch-storage.ts           (novo — Bloco 2)
-│   ├── custom-avatars-storage.ts  (novo — Bloco 3a)
-│   ├── custom-voices-storage.ts   (novo — Bloco 3b)
-│   └── ugc-storage.ts             (novo — Bloco 6)
-├── components/
-│   ├── HeygenDrawer.tsx           (atualiza — abas Meus/Públicos)
-│   ├── UrlExtractor.tsx           (novo — Bloco 1)
-│   ├── BatchMatrix.tsx            (novo — Bloco 2)
-│   ├── BatchComparison.tsx        (novo — Bloco 2)
-│   ├── PhotoAvatarUpload.tsx      (novo — Bloco 3a)
-│   ├── VoiceCloneUpload.tsx       (novo — Bloco 3b)
-│   ├── VideoEditor.tsx            (novo — Bloco 4)
-│   ├── LanguageSelector.tsx       (novo — Bloco 5)
-│   ├── UGCAnalyzer.tsx            (novo — Bloco 6)
-│   └── PerformanceDashboard.tsx   (novo — Bloco 7)
-└── routes/api/public/
-    ├── extract-url.ts                          (Bloco 1)
-    ├── heygen/photo-avatar.ts                  (Bloco 3a)
-    ├── heygen/generate-with-audio.ts           (Bloco 3b)
-    ├── heygen/translate.ts                     (Bloco 5)
-    ├── elevenlabs/clone-voice.ts               (Bloco 3b)
-    ├── elevenlabs/tts.ts                       (Bloco 3b)
-    ├── elevenlabs/music.ts                     (Bloco 4)
-    ├── elevenlabs/transcribe.ts                (Bloco 6)
-    ├── shotstack/render.ts                     (Bloco 4 — opcional)
-    └── ads/{meta,tiktok}/{oauth,sync}.ts       (Bloco 7)
+┌─────────────────────────────────────────────────────────┐
+│ TOP BAR (sticky, glass, 56px)                           │
+│  CRIATIVO·OS  │  v2.4 · claude-sonnet-4.5 · ●LIVE       │
+│                          [HISTÓRICO] [UGC] [BATCH] [⚙]  │
+├─────────────────────────────────────────────────────────┤
+│ STATUS RAIL (ticker mono — 28px)                        │
+│  // SESSION 4f2a · MODEL ONLINE · LAT 240ms · BR-SP    │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│   HERO (full-bleed, grid background, glow radial)       │
+│   ─────────────────                                     │
+│   [01] BRIEFING ENGINE                                  │
+│                                                          │
+│   SCRIPTS QUE                                           │
+│   PARAM O SCROLL.                ← display 96-128px     │
+│   E VENDEM.                       gradiente sutil       │
+│                                                          │
+│   Sub editorial 18px max-w-2xl + linha vertical vermelha│
+│                                                          │
+│   ┌─ MÉTRICAS LIVE ──────────────────────┐             │
+│   │ 12.4k scripts · 847 vídeos · 6 langs │             │
+│   └──────────────────────────────────────┘             │
+│                                                          │
+├─────────────────────────────────────────────────────────┤
+│ STEPPER HORIZONTAL refinado (com linha de progresso     │
+│  animada + ícones técnicos + tempo estimado por etapa)  │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│ CARD PRINCIPAL — 2 COLUNAS no desktop                   │
+│                                                          │
+│ ┌─ ESQUERDA (sticky) ──┐ ┌─ DIREITA (form) ──────────┐ │
+│ │ // INSTRUÇÕES         │ │ URL EXTRACTOR (destacado)  │ │
+│ │ Como funciona em 4    │ │ ─────                      │ │
+│ │ passos (numerado)     │ │ FORM em seções com         │ │
+│ │                       │ │ headers tipo               │ │
+│ │ // EXEMPLOS           │ │  [A] PRODUTO               │ │
+│ │ 3 mini-cards de       │ │  [B] AUDIÊNCIA             │ │
+│ │ scripts reais         │ │  [C] CONFIGURAÇÃO          │ │
+│ │ (mock visual)         │ │                            │ │
+│ │                       │ │ Inputs: floating label,    │ │
+│ │ // CRÉDITOS           │ │ underline ao focar,        │ │
+│ │ Powered by Claude     │ │ contador de chars          │ │
+│ │ + HeyGen + ElevenLabs │ │                            │ │
+│ │                       │ │ CTA principal: vermelho    │ │
+│ │                       │ │ com glow, ícone ⚡         │ │
+│ └───────────────────────┘ └────────────────────────────┘ │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
 ```
 
-## Conectores/secrets necessários
+Mobile: colapsa para coluna única, sidebar vira accordion no fim.
 
-| Conector | Bloco | Custo aproximado |
-|---|---|---|
-| **Firecrawl** | 1 | $0.01/scrape |
-| **HeyGen** (já tem) | 3a, 5 | crédito existente |
-| **ElevenLabs** | 3b, 4, 6 | $0.30/1k chars TTS, $0.40/min STT |
-| **Shotstack** (opcional) | 4 | $0.05/min render |
-| **Lovable Cloud** | 7, 8 | grátis até X |
-| **Meta/TikTok Business** | 7 | grátis (approval externa) |
+## Seções refeitas (mesma lógica, nova pele)
 
-## Ordem de execução (proponho fazer nesta sequência, valida cada bloco antes do próximo)
+- **Hero/Briefing** → layout em 2 colunas, form agrupado em 3 seções nomeadas (`[A] PRODUTO`, `[B] AUDIÊNCIA`, `[C] CONFIGURAÇÃO`), inputs com floating label e underline animado, CTA com glow radial vermelho.
+- **Análise** → grid 2×3 de cards com ícone grande à esquerda, número `[01]–[05]`, hover eleva e revela aspas decorativas.
+- **Scripts** → header com contador display-size + filtros mock por ângulo; cards mantêm ScriptCardImpl mas ganham wrapper externo com numeração lateral grande tipo "magazine spread".
+- **Produção** → layout tipo "ficha técnica de filme": colunas com label mono + valor, checklist em coluna separada com scroll suave.
+- **ProgressBar** → trilho com linha contínua + nodos circulares, label superior + tempo embaixo (`~2 min`).
+- **LoadingDots / streaming** → terminal box com prefixo `criativo-os $`, cursor piscando, log scroll bottom-locked.
 
-1. **Bloco 1** (URL → briefing) — 1 sessão, ganho enorme de UX
-2. **Bloco 2** (Batch Mode) — 2 sessões, multiplica produção
-3. **Bloco 3a** (Photo Avatar) — 1 sessão
-4. **Bloco 3b** (Voice Clone + áudio→HeyGen) — 2 sessões
-5. **Bloco 6** (UGC com ElevenLabs STT) — 1 sessão
-6. **Bloco 5** (Multi-idioma + translate) — 2 sessões
-7. **Bloco 4** (Editor — confirma se quer Shotstack pago ou client-only) — 3-4 sessões
-8. **Bloco 7** (Performance — depende de Cloud + auth) — 4-5 sessões
-9. **Bloco 8** (Polish + Cloud sync) — 2 sessões
+## Detalhes técnicos
 
-## Pontos abertos pra confirmar antes de começar
+- **Único arquivo tocado: `src/routes/index.tsx`** (reescrita completa). Lógica, estado, fetch streaming, persistência, traduções, drawers — tudo preservado linha-a-linha em comportamento. Só o JSX e os estilos mudam.
+- **`src/styles.css`** — aditivos pequenos: `--co-accent-glow`, `--co-grid`, classe `.bg-grid` (linhas SVG inline), `.glow-red` (box-shadow), `.text-balance`, animações `co-shimmer`, `co-cursor-blink`, `co-ticker`. Nada removido, nada renomeado.
+- **Sem novas deps.** Tipografia já carregada (Bebas Neue, DM Sans, Space Mono).
+- **Sem mexer** em: HeygenDrawer, BatchMatrix, UGCStudio, VideoEditor, UrlExtractor, BriefingHistorySheet, ScriptCardImpl interno (mantém estrutura, só ganha wrapper visual externo), todas as rotas `/api/public/*`, libs de storage, tipos.
+- **Acessibilidade**: contraste AA garantido nos novos tokens, focus rings vermelhos visíveis, `aria-current` no stepper, `aria-live` no streaming.
+- **Responsivo**: breakpoints `sm/md/lg`. Desktop ≥1024px ganha o layout 2 colunas; abaixo disso, fluxo vertical. Hero font-size com `clamp()`.
+- **Performance**: zero JS extra, só CSS. Animações com `transform`/`opacity` apenas.
 
-- **Bloco 4:** Shotstack (paga, qualidade pro) ou client-only (grátis, limitado)?
-- **Bloco 7:** Quer auth (login obrigatório) agora ou depois? Performance precisa.
-- **STT no Bloco 6:** confirmo uso ElevenLabs (já no nosso stack) em vez de AssemblyAI separado?
+## O que NÃO muda
 
-Começo pelo **Bloco 1** assim que aprovar.
+- Fluxo de 4 etapas (briefing → analise → scripts → producao)
+- Todos os botões, callbacks, drawers, atalhos
+- Persistência local de vídeos, traduções, briefings
+- Header com Histórico / UGC / Batch (só visual novo)
+- Comportamento de tradução por idioma nos cards
+- API contracts e payloads
+
+## Entregável
+
+Um único commit reescrevendo `src/routes/index.tsx` + adições mínimas em `src/styles.css`. Build limpa em `tsc --noEmit`. Visual de produto sênior pronto pra demo.
 
