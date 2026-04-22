@@ -55,6 +55,7 @@ export function HeygenDrawer({
   const [resolution, setResolution] = useState<HeygenResolution>("1080p");
   const [ratio, setRatio] = useState<HeygenRatio>("9:16");
   const [speed, setSpeed] = useState<number>(0.92);
+  const [avatarQuery, setAvatarQuery] = useState<string>("");
 
   const [phase, setPhase] = useState<Phase>("config");
   const [videoId, setVideoId] = useState<string | null>(null);
@@ -81,6 +82,11 @@ export function HeygenDrawer({
     setStatusInfo(null);
     setErrorMsg(null);
   }, [open, script]);
+
+  // Clear avatar search when drawer closes
+  useEffect(() => {
+    if (!open) setAvatarQuery("");
+  }, [open]);
 
   // Load avatars + voices on first open
   useEffect(() => {
@@ -256,6 +262,20 @@ export function HeygenDrawer({
             <div className="text-[11px] font-bold font-mono uppercase tracking-widest mb-3" style={labelStyle}>
               Avatar
             </div>
+            {!loadingMeta && avatars.length > 0 && (
+              <input
+                type="text"
+                value={avatarQuery}
+                onChange={(e) => setAvatarQuery(e.target.value)}
+                placeholder="Buscar avatar..."
+                className="w-full mb-3 px-3 py-2 rounded text-[12px] font-mono outline-none"
+                style={{
+                  background: "var(--co-surface)",
+                  border: "1px solid var(--co-border)",
+                  color: "var(--co-text)",
+                }}
+              />
+            )}
             {loadingMeta ? (
               <div className="grid grid-cols-3 gap-2">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -268,7 +288,13 @@ export function HeygenDrawer({
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
-                {avatars.map((a) => {
+                {avatars
+                  .filter((a) =>
+                    avatarQuery.trim()
+                      ? a.avatar_name.toLowerCase().includes(avatarQuery.trim().toLowerCase())
+                      : true,
+                  )
+                  .map((a) => {
                   const active = selectedAvatar === a.avatar_id;
                   return (
                     <button
@@ -307,6 +333,15 @@ export function HeygenDrawer({
                     Nenhum avatar disponível.
                   </div>
                 )}
+                {avatars.length > 0 &&
+                  avatarQuery.trim() &&
+                  avatars.filter((a) =>
+                    a.avatar_name.toLowerCase().includes(avatarQuery.trim().toLowerCase()),
+                  ).length === 0 && (
+                    <div className="col-span-3 text-xs font-mono" style={labelStyle}>
+                      Nenhum avatar para "{avatarQuery}".
+                    </div>
+                  )}
               </div>
             )}
           </section>
@@ -328,49 +363,72 @@ export function HeygenDrawer({
               </div>
             ) : (
               <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                {voices.map((v) => {
-                  const active = selectedVoice === v.voice_id;
-                  return (
-                    <div
-                      key={v.voice_id}
-                      className="flex items-center gap-2 rounded px-3 py-2"
-                      style={{
-                        border: active
-                          ? "1px solid var(--co-red)"
-                          : "1px solid var(--co-border)",
-                        background: active
-                          ? "color-mix(in oklab, var(--co-red) 8%, transparent)"
-                          : "var(--co-surface)",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setSelectedVoice(v.voice_id)}
-                        className="flex-1 text-left"
-                      >
-                        <div className="text-[13px]" style={{ color: "var(--co-text)" }}>
-                          {v.name}
-                        </div>
-                        <div className="text-[10px] font-mono uppercase" style={labelStyle}>
-                          {v.gender}
-                        </div>
-                      </button>
-                      {v.preview_audio && (
-                        <button
-                          type="button"
-                          onClick={() => playPreview(v.preview_audio)}
-                          className="text-xs px-2 py-1 rounded font-mono"
-                          style={{
-                            border: "1px solid var(--co-border-strong)",
-                            color: "var(--co-text-dim)",
-                          }}
+                {(() => {
+                  const groups: Record<string, HeygenVoice[]> = { Feminino: [], Masculino: [], Outro: [] };
+                  for (const v of voices) {
+                    const g = (v.gender || "").toLowerCase();
+                    if (g.startsWith("f") || g.includes("female")) groups.Feminino.push(v);
+                    else if (g.startsWith("m") || g.includes("male")) groups.Masculino.push(v);
+                    else groups.Outro.push(v);
+                  }
+                  return (["Feminino", "Masculino", "Outro"] as const).map((gName) => {
+                    const list = groups[gName];
+                    if (!list.length) return null;
+                    return (
+                      <div key={gName} className="space-y-1.5">
+                        <h4
+                          className="text-[10px] font-bold font-mono uppercase tracking-widest pt-2 pb-1"
+                          style={{ color: "var(--co-red)" }}
                         >
-                          ▶
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                          {gName} · {list.length}
+                        </h4>
+                        {list.map((v) => {
+                          const active = selectedVoice === v.voice_id;
+                          return (
+                            <div
+                              key={v.voice_id}
+                              className="flex items-center gap-2 rounded px-3 py-2"
+                              style={{
+                                border: active
+                                  ? "1px solid var(--co-red)"
+                                  : "1px solid var(--co-border)",
+                                background: active
+                                  ? "color-mix(in oklab, var(--co-red) 8%, transparent)"
+                                  : "var(--co-surface)",
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => setSelectedVoice(v.voice_id)}
+                                className="flex-1 text-left"
+                              >
+                                <div className="text-[13px]" style={{ color: "var(--co-text)" }}>
+                                  {v.name}
+                                </div>
+                                <div className="text-[10px] font-mono uppercase" style={labelStyle}>
+                                  {v.gender}
+                                </div>
+                              </button>
+                              {v.preview_audio && (
+                                <button
+                                  type="button"
+                                  onClick={() => playPreview(v.preview_audio)}
+                                  className="text-xs px-2 py-1 rounded font-mono"
+                                  style={{
+                                    border: "1px solid var(--co-border-strong)",
+                                    color: "var(--co-text-dim)",
+                                  }}
+                                >
+                                  ▶
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  });
+                })()}
                 {!voices.length && (
                   <div className="text-xs font-mono" style={labelStyle}>
                     Nenhuma voz em português encontrada.
@@ -412,25 +470,43 @@ export function HeygenDrawer({
               <div className="text-[11px] font-bold font-mono uppercase tracking-widest mb-2" style={labelStyle}>
                 Proporção
               </div>
-              <div className="flex gap-2">
-                {(["9:16", "1:1", "16:9"] as const).map((r) => {
-                  const active = ratio === r;
-                  return (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setRatio(r)}
-                      className="flex-1 py-2 rounded text-xs font-mono"
-                      style={{
-                        background: active ? "var(--co-red)" : "transparent",
-                        border: active ? "1px solid var(--co-red)" : "1px solid var(--co-border)",
-                        color: active ? "#fff" : "var(--co-text-dim)",
-                      }}
-                    >
-                      {r}
-                    </button>
-                  );
-                })}
+              <div className="flex items-center gap-3">
+                <div className="flex gap-2 flex-1">
+                  {(["9:16", "1:1", "16:9"] as const).map((r) => {
+                    const active = ratio === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setRatio(r)}
+                        className="flex-1 py-2 rounded text-xs font-mono"
+                        style={{
+                          background: active ? "var(--co-red)" : "transparent",
+                          border: active ? "1px solid var(--co-red)" : "1px solid var(--co-border)",
+                          color: active ? "#fff" : "var(--co-text-dim)",
+                        }}
+                      >
+                        {r}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div
+                  className="flex items-center justify-center shrink-0"
+                  style={{ height: 60, width: 60 }}
+                  aria-hidden
+                >
+                  <div
+                    className="rounded-sm"
+                    style={{
+                      border: "1.5px solid var(--co-red)",
+                      background: "color-mix(in oklab, var(--co-red) 8%, transparent)",
+                      height: ratio === "16:9" ? 34 : 60,
+                      width: ratio === "9:16" ? 34 : 60,
+                      transition: "all 0.18s ease",
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -478,15 +554,26 @@ export function HeygenDrawer({
 
           {/* GERAR */}
           {phase === "config" || phase === "error" ? (
-            <button
-              type="button"
-              onClick={generate}
-              disabled={!selectedAvatar || !selectedVoice || !finalText}
-              className="w-full py-4 rounded font-mono text-sm font-bold uppercase tracking-widest disabled:opacity-50"
-              style={{ background: "var(--co-red)", color: "#fff" }}
-            >
-              GERAR VÍDEO ⚡
-            </button>
+            <div className="space-y-2">
+              <div
+                className="text-[10px] font-mono uppercase tracking-widest text-right"
+                style={{
+                  color: finalText.length >= 1500 ? "var(--co-red)" : "var(--co-text-dim)",
+                }}
+              >
+                {finalText.length} / 1500 caracteres
+                {finalText.length >= 1500 && " · TRUNCADO"}
+              </div>
+              <button
+                type="button"
+                onClick={generate}
+                disabled={!selectedAvatar || !selectedVoice || !finalText}
+                className="w-full py-4 rounded font-mono text-sm font-bold uppercase tracking-widest disabled:opacity-50"
+                style={{ background: "var(--co-red)", color: "#fff" }}
+              >
+                GERAR VÍDEO ⚡
+              </button>
+            </div>
           ) : null}
 
           {phase === "generating" && (

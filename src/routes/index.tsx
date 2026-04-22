@@ -4,12 +4,15 @@ import { extractJson } from "@/server/generate-scripts";
 import type {
   Analise,
   BriefingInput,
+  GenerateResult,
   GuiaProducao,
   Script,
 } from "@/lib/criativo-types";
 import type { GeneratedVideo } from "@/lib/heygen-types";
 import { HeygenDrawer } from "@/components/HeygenDrawer";
 import { hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
+import { BriefingHistorySheet } from "@/components/BriefingHistorySheet";
+import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
@@ -489,6 +492,7 @@ function CriativoOS() {
   const [streamingText, setStreamingText] = useState("");
   const [producingIndex, setProducingIndex] = useState<number | null>(null);
   const [generatedVideos, setGeneratedVideos] = useState<Record<number, GeneratedVideo>>({});
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const sessionKey = useMemo(
     () => (scripts.length ? hashScripts(scripts) : null),
@@ -679,6 +683,17 @@ function CriativoOS() {
       setGuiaProducao(filledGuia);
       setStep("analise");
 
+      const result: GenerateResult = {
+        analise: filledAnalise,
+        scripts: rawScripts,
+        guiaProducao: filledGuia,
+      };
+      try {
+        saveBriefing(form, result);
+      } catch {
+        /* ignore storage errors */
+      }
+
       const partial =
         !a.momento_de_vida ||
         !g.perfil_avatar ||
@@ -704,6 +719,16 @@ function CriativoOS() {
     setGuiaProducao(null);
   };
 
+  const loadFromHistory = (b: SavedBriefing) => {
+    setForm(b.briefing);
+    setAnalise(b.result.analise);
+    setScripts(b.result.scripts);
+    setGuiaProducao(b.result.guiaProducao);
+    setGeneratedVideos(loadVideos(b.scriptsHash));
+    setError(null);
+    setStep("scripts");
+  };
+
   return (
     <div className="min-h-screen" style={{ background: "var(--co-bg)" }}>
       {/* Header */}
@@ -724,11 +749,26 @@ function CriativoOS() {
               CRIATIVO<span style={{ color: "var(--co-red)" }}>OS</span>
             </h1>
           </div>
-          <div
-            className="text-[10px] font-mono-tech uppercase tracking-wider"
-            style={{ color: "var(--co-text-dim)" }}
-          >
-            <span style={{ color: "var(--co-green)" }}>●</span> SISTEMA ATIVO
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="text-[10px] font-mono-tech uppercase tracking-wider px-2.5 py-1.5 rounded-sm transition-colors"
+              style={{
+                border: "1px solid var(--co-border)",
+                color: "var(--co-text-dim)",
+                background: "transparent",
+              }}
+              title="Histórico de briefings"
+            >
+              🕘 HISTÓRICO
+            </button>
+            <div
+              className="text-[10px] font-mono-tech uppercase tracking-wider hidden sm:block"
+              style={{ color: "var(--co-text-dim)" }}
+            >
+              <span style={{ color: "var(--co-green)" }}>●</span> SISTEMA ATIVO
+            </div>
           </div>
         </div>
       </header>
@@ -1165,6 +1205,12 @@ function CriativoOS() {
             setGeneratedVideos((prev) => ({ ...prev, [producingIndex]: v }));
           }
         }}
+      />
+      <BriefingHistorySheet
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        onLoad={loadFromHistory}
+        onNew={reset}
       />
     </div>
   );
