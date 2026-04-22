@@ -12,7 +12,7 @@ Vou montar **TUDO num plano só**, em ordem de execução. Cada bloco entrega va
 
 - Novo campo no topo da etapa 1: input de URL + botão "🔗 EXTRAIR DA URL".
 - Backend: nova rota `src/routes/api/public/extract-url.ts` que usa **Firecrawl** (`scrape` com `formats: ['markdown', 'json', 'branding']`) pra raspar a página.
-- Resposta vai pro Lovable AI Gateway (gemini-3-flash-preview) com tool calling estruturado pra extrair: `produto`, `publico`, `dor`, `transformacao`, `prova`, `tom sugerido`. Preenche os campos do briefing automaticamente.
+- Resposta vai pro **Claude (`claude-sonnet-4-5`)** com tool use estruturado (`input_schema` JSON) pra extrair: `produto`, `publico`, `dor`, `transformacao`, `prova`, `tom sugerido`. Preenche os campos do briefing automaticamente.
 - Mantém edição manual depois do auto-fill.
 - Conector: **Firecrawl** (já documentado no contexto).
 
