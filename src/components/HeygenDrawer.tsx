@@ -470,25 +470,43 @@ export function HeygenDrawer({
               <div className="text-[11px] font-bold font-mono uppercase tracking-widest mb-2" style={labelStyle}>
                 Proporção
               </div>
-              <div className="flex gap-2">
-                {(["9:16", "1:1", "16:9"] as const).map((r) => {
-                  const active = ratio === r;
-                  return (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setRatio(r)}
-                      className="flex-1 py-2 rounded text-xs font-mono"
-                      style={{
-                        background: active ? "var(--co-red)" : "transparent",
-                        border: active ? "1px solid var(--co-red)" : "1px solid var(--co-border)",
-                        color: active ? "#fff" : "var(--co-text-dim)",
-                      }}
-                    >
-                      {r}
-                    </button>
-                  );
-                })}
+              <div className="flex items-center gap-3">
+                <div className="flex gap-2 flex-1">
+                  {(["9:16", "1:1", "16:9"] as const).map((r) => {
+                    const active = ratio === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setRatio(r)}
+                        className="flex-1 py-2 rounded text-xs font-mono"
+                        style={{
+                          background: active ? "var(--co-red)" : "transparent",
+                          border: active ? "1px solid var(--co-red)" : "1px solid var(--co-border)",
+                          color: active ? "#fff" : "var(--co-text-dim)",
+                        }}
+                      >
+                        {r}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div
+                  className="flex items-center justify-center shrink-0"
+                  style={{ height: 60, width: 60 }}
+                  aria-hidden
+                >
+                  <div
+                    className="rounded-sm"
+                    style={{
+                      border: "1.5px solid var(--co-red)",
+                      background: "color-mix(in oklab, var(--co-red) 8%, transparent)",
+                      height: ratio === "16:9" ? 34 : 60,
+                      width: ratio === "9:16" ? 34 : 60,
+                      transition: "all 0.18s ease",
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
