@@ -195,17 +195,31 @@ export function HeygenDrawer({
     setErrorMsg(null);
     setPhase("generating");
     try {
-      const res = await fetch("/api/public/heygen/generate", {
+      const useClone = isCustomVoiceId(selectedVoice);
+      const url = useClone
+        ? "/api/public/heygen/generate-with-audio"
+        : "/api/public/heygen/generate";
+      const body = useClone
+        ? {
+            avatar_id: selectedAvatar,
+            elevenlabs_voice_id: selectedVoice,
+            text: finalText,
+            speed,
+            ratio,
+            resolution,
+          }
+        : {
+            avatar_id: selectedAvatar,
+            voice_id: selectedVoice,
+            text: finalText,
+            speed,
+            ratio,
+            resolution,
+          };
+      const res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          avatar_id: selectedAvatar,
-          voice_id: selectedVoice,
-          text: finalText,
-          speed,
-          ratio,
-          resolution,
-        }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) {
