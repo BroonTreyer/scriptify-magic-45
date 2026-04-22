@@ -749,11 +749,26 @@ function CriativoOS() {
               CRIATIVO<span style={{ color: "var(--co-red)" }}>OS</span>
             </h1>
           </div>
-          <div
-            className="text-[10px] font-mono-tech uppercase tracking-wider"
-            style={{ color: "var(--co-text-dim)" }}
-          >
-            <span style={{ color: "var(--co-green)" }}>●</span> SISTEMA ATIVO
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="text-[10px] font-mono-tech uppercase tracking-wider px-2.5 py-1.5 rounded-sm transition-colors"
+              style={{
+                border: "1px solid var(--co-border)",
+                color: "var(--co-text-dim)",
+                background: "transparent",
+              }}
+              title="Histórico de briefings"
+            >
+              🕘 HISTÓRICO
+            </button>
+            <div
+              className="text-[10px] font-mono-tech uppercase tracking-wider hidden sm:block"
+              style={{ color: "var(--co-text-dim)" }}
+            >
+              <span style={{ color: "var(--co-green)" }}>●</span> SISTEMA ATIVO
+            </div>
           </div>
         </div>
       </header>
