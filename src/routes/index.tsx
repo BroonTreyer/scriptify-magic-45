@@ -444,7 +444,7 @@ function ScriptCardImpl({
             role="button"
             onClick={(e) => {
               e.stopPropagation();
-              onProduce(index);
+              onProduce(index, activeScript);
             }}
             className="px-3.5 py-1.5 rounded-sm text-[11px] cursor-pointer font-mono-tech transition-colors"
             style={{
@@ -453,7 +453,7 @@ function ScriptCardImpl({
               color: "#fff",
             }}
           >
-            🎬 PRODUZIR
+            🎬 PRODUZIR{activeLang !== "pt" ? ` ${LANGUAGES.find((l) => l.code === activeLang)?.flag}` : ""}
           </span>
           <span
             className="text-base transition-transform"
