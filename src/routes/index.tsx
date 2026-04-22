@@ -244,11 +244,15 @@ function ScriptCard({
   index,
   onProduce,
   generatedVideo,
+  translations,
+  onTranslate,
 }: {
   script: Script;
   index: number;
-  onProduce: (i: number) => void;
+  onProduce: (i: number, override?: Script) => void;
   generatedVideo?: GeneratedVideo;
+  translations: Partial<Record<LanguageCode, Script>>;
+  onTranslate: (i: number, lang: LanguageCode) => Promise<void>;
 }) {
   return (
     <ScriptCardImpl
@@ -256,6 +260,8 @@ function ScriptCard({
       index={index}
       onProduce={onProduce}
       generatedVideo={generatedVideo}
+      translations={translations}
+      onTranslate={onTranslate}
     />
   );
 }
