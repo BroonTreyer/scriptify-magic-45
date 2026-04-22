@@ -402,7 +402,10 @@ function CriativoOS() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let fullText = "";
+      // Prefilled with "{" on the server side
+      let fullText = "{";
+      let stopReason: string | null = null;
+      setStreamingText(fullText);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -418,16 +421,25 @@ function CriativoOS() {
           try {
             const evt = JSON.parse(payload) as {
               type?: string;
-              delta?: { type?: string; text?: string };
+              delta?: { type?: string; text?: string; stop_reason?: string };
             };
             if (evt.type === "content_block_delta" && evt.delta?.text) {
               fullText += evt.delta.text;
               setStreamingText(fullText);
             }
+            if (evt.type === "message_delta" && evt.delta?.stop_reason) {
+              stopReason = evt.delta.stop_reason;
+            }
           } catch {
             /* ignore non-JSON keepalives */
           }
         }
+      }
+
+      if (stopReason === "max_tokens") {
+        throw new Error(
+          "Claude atingiu o limite de tokens. Tente reduzir para 3 scripts e gerar de novo.",
+        );
       }
 
       let parsed: {
@@ -439,7 +451,7 @@ function CriativoOS() {
         parsed = JSON.parse(extractJson(fullText));
       } catch {
         throw new Error(
-          "Claude cortou a resposta. Tente reduzir o número de scripts e gerar de novo.",
+          "Claude retornou JSON inválido. Tente novamente — se persistir, reduza o número de scripts.",
         );
       }
 
