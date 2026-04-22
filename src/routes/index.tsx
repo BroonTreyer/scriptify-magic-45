@@ -1269,8 +1269,13 @@ function CriativoOS() {
                 key={i}
                 script={s}
                 index={i}
-                onProduce={(idx) => setProducingIndex(idx)}
+                onProduce={(idx, override) => {
+                  setProducingScript(override ?? scripts[idx]);
+                  setProducingIndex(idx);
+                }}
                 generatedVideo={generatedVideos[i]}
+                translations={translations[i] || {}}
+                onTranslate={translateScript}
               />
             ))}
 
