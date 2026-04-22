@@ -16,6 +16,8 @@ import { Route as ApiPublicHeygenVoicesRouteImport } from './routes/api/public/h
 import { Route as ApiPublicHeygenGenerateRouteImport } from './routes/api/public/heygen/generate'
 import { Route as ApiPublicHeygenAvatarsRouteImport } from './routes/api/public/heygen/avatars'
 import { Route as ApiPublicHeygenStatusVideoIdRouteImport } from './routes/api/public/heygen/status.$videoId'
+import { Route as ApiPublicHeygenPhotoAvatarCreateRouteImport } from './routes/api/public/heygen/photo-avatar.create'
+import { Route as ApiPublicHeygenPhotoAvatarStatusGroupIdRouteImport } from './routes/api/public/heygen/photo-avatar.status.$groupId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -54,6 +56,18 @@ const ApiPublicHeygenStatusVideoIdRoute =
     path: '/api/public/heygen/status/$videoId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHeygenPhotoAvatarCreateRoute =
+  ApiPublicHeygenPhotoAvatarCreateRouteImport.update({
+    id: '/api/public/heygen/photo-avatar/create',
+    path: '/api/public/heygen/photo-avatar/create',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHeygenPhotoAvatarStatusGroupIdRoute =
+  ApiPublicHeygenPhotoAvatarStatusGroupIdRouteImport.update({
+    id: '/api/public/heygen/photo-avatar/status/$groupId',
+    path: '/api/public/heygen/photo-avatar/status/$groupId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -62,7 +76,9 @@ export interface FileRoutesByFullPath {
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
   '/api/public/heygen/voices': typeof ApiPublicHeygenVoicesRoute
+  '/api/public/heygen/photo-avatar/create': typeof ApiPublicHeygenPhotoAvatarCreateRoute
   '/api/public/heygen/status/$videoId': typeof ApiPublicHeygenStatusVideoIdRoute
+  '/api/public/heygen/photo-avatar/status/$groupId': typeof ApiPublicHeygenPhotoAvatarStatusGroupIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -71,7 +87,9 @@ export interface FileRoutesByTo {
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
   '/api/public/heygen/voices': typeof ApiPublicHeygenVoicesRoute
+  '/api/public/heygen/photo-avatar/create': typeof ApiPublicHeygenPhotoAvatarCreateRoute
   '/api/public/heygen/status/$videoId': typeof ApiPublicHeygenStatusVideoIdRoute
+  '/api/public/heygen/photo-avatar/status/$groupId': typeof ApiPublicHeygenPhotoAvatarStatusGroupIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -81,7 +99,9 @@ export interface FileRoutesById {
   '/api/public/heygen/avatars': typeof ApiPublicHeygenAvatarsRoute
   '/api/public/heygen/generate': typeof ApiPublicHeygenGenerateRoute
   '/api/public/heygen/voices': typeof ApiPublicHeygenVoicesRoute
+  '/api/public/heygen/photo-avatar/create': typeof ApiPublicHeygenPhotoAvatarCreateRoute
   '/api/public/heygen/status/$videoId': typeof ApiPublicHeygenStatusVideoIdRoute
+  '/api/public/heygen/photo-avatar/status/$groupId': typeof ApiPublicHeygenPhotoAvatarStatusGroupIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -92,7 +112,9 @@ export interface FileRouteTypes {
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
     | '/api/public/heygen/voices'
+    | '/api/public/heygen/photo-avatar/create'
     | '/api/public/heygen/status/$videoId'
+    | '/api/public/heygen/photo-avatar/status/$groupId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -101,7 +123,9 @@ export interface FileRouteTypes {
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
     | '/api/public/heygen/voices'
+    | '/api/public/heygen/photo-avatar/create'
     | '/api/public/heygen/status/$videoId'
+    | '/api/public/heygen/photo-avatar/status/$groupId'
   id:
     | '__root__'
     | '/'
@@ -110,7 +134,9 @@ export interface FileRouteTypes {
     | '/api/public/heygen/avatars'
     | '/api/public/heygen/generate'
     | '/api/public/heygen/voices'
+    | '/api/public/heygen/photo-avatar/create'
     | '/api/public/heygen/status/$videoId'
+    | '/api/public/heygen/photo-avatar/status/$groupId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -120,7 +146,9 @@ export interface RootRouteChildren {
   ApiPublicHeygenAvatarsRoute: typeof ApiPublicHeygenAvatarsRoute
   ApiPublicHeygenGenerateRoute: typeof ApiPublicHeygenGenerateRoute
   ApiPublicHeygenVoicesRoute: typeof ApiPublicHeygenVoicesRoute
+  ApiPublicHeygenPhotoAvatarCreateRoute: typeof ApiPublicHeygenPhotoAvatarCreateRoute
   ApiPublicHeygenStatusVideoIdRoute: typeof ApiPublicHeygenStatusVideoIdRoute
+  ApiPublicHeygenPhotoAvatarStatusGroupIdRoute: typeof ApiPublicHeygenPhotoAvatarStatusGroupIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -174,6 +202,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHeygenStatusVideoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/heygen/photo-avatar/create': {
+      id: '/api/public/heygen/photo-avatar/create'
+      path: '/api/public/heygen/photo-avatar/create'
+      fullPath: '/api/public/heygen/photo-avatar/create'
+      preLoaderRoute: typeof ApiPublicHeygenPhotoAvatarCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/heygen/photo-avatar/status/$groupId': {
+      id: '/api/public/heygen/photo-avatar/status/$groupId'
+      path: '/api/public/heygen/photo-avatar/status/$groupId'
+      fullPath: '/api/public/heygen/photo-avatar/status/$groupId'
+      preLoaderRoute: typeof ApiPublicHeygenPhotoAvatarStatusGroupIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -184,7 +226,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHeygenAvatarsRoute: ApiPublicHeygenAvatarsRoute,
   ApiPublicHeygenGenerateRoute: ApiPublicHeygenGenerateRoute,
   ApiPublicHeygenVoicesRoute: ApiPublicHeygenVoicesRoute,
+  ApiPublicHeygenPhotoAvatarCreateRoute: ApiPublicHeygenPhotoAvatarCreateRoute,
   ApiPublicHeygenStatusVideoIdRoute: ApiPublicHeygenStatusVideoIdRoute,
+  ApiPublicHeygenPhotoAvatarStatusGroupIdRoute:
+    ApiPublicHeygenPhotoAvatarStatusGroupIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
