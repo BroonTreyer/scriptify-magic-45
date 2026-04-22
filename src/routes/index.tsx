@@ -1206,6 +1206,12 @@ function CriativoOS() {
           }
         }}
       />
+      <BriefingHistorySheet
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        onLoad={loadFromHistory}
+        onNew={reset}
+      />
     </div>
   );
 }
