@@ -1092,6 +1092,19 @@ function CriativoOS() {
 
             <CopyAllButton scripts={scripts} />
 
+            <button
+              type="button"
+              onClick={() => setBatchOpen(true)}
+              className="w-full mb-5 py-3 rounded text-[12px] font-mono-tech tracking-wider uppercase"
+              style={{
+                background: "transparent",
+                border: "1px dashed var(--co-red)",
+                color: "var(--co-red)",
+              }}
+            >
+              🎬 GERAR EM LOTE (A/B) — scripts × avatares × vozes
+            </button>
+
             {scripts.map((s, i) => (
               <ScriptCard
                 key={i}
