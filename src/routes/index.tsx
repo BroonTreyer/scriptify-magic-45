@@ -801,6 +801,21 @@ function CriativoOS() {
               </p>
             </div>
 
+            <UrlExtractor
+              onExtracted={(partial) =>
+                setForm((f) => ({
+                  ...f,
+                  produto: partial.produto || f.produto,
+                  publico: partial.publico || f.publico,
+                  dor: partial.dor || f.dor,
+                  transformacao: partial.transformacao || f.transformacao,
+                  prova: partial.prova || f.prova,
+                  tom: partial.tom || f.tom,
+                  url: partial.url || f.url,
+                }))
+              }
+            />
+
             <div
               className="rounded-md p-6 sm:p-8 mb-6"
               style={{
