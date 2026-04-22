@@ -17,6 +17,13 @@ import { UrlExtractor } from "@/components/UrlExtractor";
 import { BatchMatrix } from "@/components/BatchMatrix";
 import { UGCStudio } from "@/components/UGCStudio";
 import { VideoEditor } from "@/components/VideoEditor";
+import {
+  LANGUAGES,
+  loadTranslations,
+  saveTranslations,
+  type LanguageCode,
+  type TranslationMap,
+} from "@/lib/translation-storage";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
