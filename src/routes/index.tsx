@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { generateScripts } from "@/server/generate-scripts";
+import { extractJson } from "@/server/generate-scripts";
 import type {
   Analise,
   BriefingInput,
@@ -342,8 +341,7 @@ function CriativoOS() {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [guiaProducao, setGuiaProducao] = useState<GuiaProducao | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const generateFn = useServerFn(generateScripts);
+  const [streamingText, setStreamingText] = useState("");
 
   const [form, setForm] = useState<BriefingInput>({
     produto: "",
@@ -381,11 +379,77 @@ function CriativoOS() {
       setLoadingMsg(LOADING_MSGS[mi]);
     }, 2500);
 
+    setStreamingText("");
+
     try {
-      const result = await generateFn({ data: { briefing: form } });
-      setAnalise(result.analise);
-      setScripts(result.scripts);
-      setGuiaProducao(result.guiaProducao);
+      const res = await fetch("/api/public/generate-scripts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ briefing: form }),
+      });
+
+      if (!res.ok || !res.body) {
+        let msg = `Erro (${res.status}).`;
+        try {
+          const j = (await res.json()) as { error?: string };
+          if (j.error) msg = j.error;
+        } catch {
+          /* noop */
+        }
+        throw new Error(msg);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const payload = trimmed.slice(5).trim();
+          if (!payload || payload === "[DONE]") continue;
+          try {
+            const evt = JSON.parse(payload) as {
+              type?: string;
+              delta?: { type?: string; text?: string };
+            };
+            if (evt.type === "content_block_delta" && evt.delta?.text) {
+              fullText += evt.delta.text;
+              setStreamingText(fullText);
+            }
+          } catch {
+            /* ignore non-JSON keepalives */
+          }
+        }
+      }
+
+      let parsed: {
+        analise: Analise;
+        scripts: Script[];
+        guia_producao: GuiaProducao;
+      };
+      try {
+        parsed = JSON.parse(extractJson(fullText));
+      } catch {
+        throw new Error(
+          "Claude cortou a resposta. Tente reduzir o número de scripts e gerar de novo.",
+        );
+      }
+
+      if (!parsed.analise || !Array.isArray(parsed.scripts) || !parsed.guia_producao) {
+        throw new Error("Resposta do Claude está incompleta. Tente novamente.");
+      }
+
+      setAnalise(parsed.analise);
+      setScripts(parsed.scripts);
+      setGuiaProducao(parsed.guia_producao);
       setStep("analise");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erro ao gerar scripts.";
@@ -617,6 +681,22 @@ function CriativoOS() {
                   "⚡ GERAR SCRIPTS AGORA"
                 )}
               </button>
+
+              {loading && streamingText && (
+                <div
+                  className="mt-4 p-4 rounded font-mono-tech text-[11px] leading-relaxed max-h-48 overflow-auto whitespace-pre-wrap"
+                  style={{
+                    background: "var(--co-bg)",
+                    border: "1px solid var(--co-border)",
+                    color: "var(--co-text-dim)",
+                  }}
+                  ref={(el) => {
+                    if (el) el.scrollTop = el.scrollHeight;
+                  }}
+                >
+                  {streamingText.slice(-1200)}
+                </div>
+              )}
             </div>
           </div>
         )}
