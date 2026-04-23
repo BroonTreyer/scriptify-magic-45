@@ -173,70 +173,10 @@ const LOADING_MSGS = [
   "Montando guia de produção HeyGen...",
 ];
 
-function formatScript(s: Script): string {
-  return [
-    `HOOK (0–3s):`,
-    s.hook ?? "",
-    ``,
-    `AGITAÇÃO (3–15s):`,
-    s.agitacao ?? "",
-    ``,
-    `VIRADA (15–20s):`,
-    s.virada ?? "",
-    ``,
-    `PROVA (20–35s):`,
-    s.prova ?? "",
-    ``,
-    `CTA (últimos 5s):`,
-    s.cta ?? "",
-    ``,
-    `ÂNGULO: ${s.angulo ?? ""}`,
-    `NOTA ESTRATÉGICA: ${s.estrategia ?? ""}`,
-  ].join("\n");
-}
-
-function formatAllScripts(scripts: Script[]): string {
-  return scripts
-    .map((s, i) => `#${i + 1}\n\n${formatScript(s)}`)
-    .join("\n\n---\n\n");
-}
-
 /* ──────────────────────────────────────────────────────────
    STATUS RAIL — ticker técnico
    ────────────────────────────────────────────────────────── */
-function StatusRail() {
-  const [sessionId, setSessionId] = useState("0000");
-  useEffect(() => {
-    setSessionId(Math.random().toString(16).slice(2, 6).toUpperCase());
-  }, []);
-
-  const items = [
-    `SESSION ${sessionId}`,
-    `MODEL claude-sonnet-4.5`,
-    `ENGINE briefing.v2`,
-    `STREAM server-sent events`,
-    `STACK heygen · elevenlabs · firecrawl`,
-  ];
-  const line = items.map((x) => `// ${x}`).join("    ·    ");
-
-  return (
-    <div
-      className="border-b overflow-hidden"
-      style={{
-        borderColor: "var(--co-border)",
-        background: "color-mix(in oklab, var(--co-bg) 92%, black)",
-      }}
-    >
-      <div className="relative h-7 flex items-center">
-        <div className="flex animate-co-ticker whitespace-nowrap font-mono-tech text-[10px] uppercase tracking-widest"
-             style={{ color: "var(--co-text-dim)" }}>
-          <span className="px-6">{line}</span>
-          <span className="px-6">{line}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
+/* StatusRail extraído para src/components/home/StatusRail.tsx */
 
 /* ──────────────────────────────────────────────────────────
    STEPPER — trilho técnico com nodos
