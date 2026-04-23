@@ -1,6 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import type { BriefingInput } from "@/lib/criativo-types";
 import { buildPrompt } from "@/server/generate-scripts";
+
+const BriefingSchema = z.object({
+  produto: z.string().min(1).max(2000),
+  url: z.string().max(500).optional().default(""),
+  publico: z.string().min(1).max(2000),
+  dor: z.string().min(1).max(2000),
+  transformacao: z.string().min(1).max(2000),
+  prova: z.string().max(2000).optional().default(""),
+  tom: z.string().min(1).max(80),
+  plataforma: z.string().min(1).max(80),
+  duracao: z.string().min(1).max(40),
+  concorrente: z.string().max(500).optional().default(""),
+  numScripts: z.number().int().min(1).max(10),
+});
+
+const Body = z.object({ briefing: BriefingSchema });
 
 export const Route = createFileRoute("/api/public/generate-scripts")({
   server: {
@@ -16,11 +33,13 @@ export const Route = createFileRoute("/api/public/generate-scripts")({
 
         let briefing: BriefingInput;
         try {
-          const body = (await request.json()) as { briefing?: BriefingInput };
-          if (!body.briefing) throw new Error("briefing ausente");
-          briefing = body.briefing;
-        } catch {
-          return new Response(JSON.stringify({ error: "Body inválido." }), {
+          const parsed = Body.parse(await request.json());
+          briefing = parsed.briefing as BriefingInput;
+        } catch (e) {
+          return new Response(JSON.stringify({
+            error: "Body inválido.",
+            detail: e instanceof Error ? e.message : String(e),
+          }), {
             status: 400,
             headers: { "content-type": "application/json" },
           });
@@ -49,8 +68,10 @@ export const Route = createFileRoute("/api/public/generate-scripts")({
           console.error("Anthropic API error", claudeRes.status, errText);
           let msg = `Erro na API do Claude (${claudeRes.status}).`;
           if (claudeRes.status === 401) msg = "Chave da Anthropic inválida.";
+          else if (claudeRes.status === 402)
+            msg = "Créditos da Anthropic esgotados. Recarregue em console.anthropic.com.";
           else if (claudeRes.status === 429 || claudeRes.status === 529)
-            msg = "Claude está sobrecarregado. Tente novamente em alguns segundos.";
+            msg = "Claude sobrecarregado ou rate-limit atingido. Aguarde alguns segundos e tente novamente.";
           return new Response(JSON.stringify({ error: msg }), {
             status: claudeRes.status,
             headers: { "content-type": "application/json" },
