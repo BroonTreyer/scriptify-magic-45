@@ -13,8 +13,10 @@ export const LANGUAGES: { code: LanguageCode; label: string; flag: string }[] = 
 
 const PREFIX = "criativo-os:translations:";
 
-// shape: { [scriptIndex]: { [langCode]: Script } }
-export type TranslationMap = Record<number, Partial<Record<LanguageCode, Script>>>;
+// shape: { [scriptHash]: { [langCode]: Script } }
+// Chaveado por hash do script (não por índice) para sobreviver a regenerações
+// que reordenam scripts.
+export type TranslationMap = Record<string, Partial<Record<LanguageCode, Script>>>;
 
 function safeLS(): Storage | null {
   try {
@@ -36,7 +38,16 @@ export function loadTranslations(sessionKey: string): TranslationMap {
     const raw = ls.getItem(PREFIX + sessionKey);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? (parsed as TranslationMap) : {};
+    if (!parsed || typeof parsed !== "object") return {};
+    // Migration: descarta formato antigo (chaves numéricas) — nunca casará com hash
+    // novo, então não vaza tradução pro script errado.
+    const out: TranslationMap = {};
+    for (const k of Object.keys(parsed)) {
+      if (!/^\d+$/.test(k)) {
+        out[k] = (parsed as TranslationMap)[k];
+      }
+    }
+    return out;
   } catch {
     return {};
   }

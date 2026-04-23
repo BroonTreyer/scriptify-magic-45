@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { extractJson } from "@/server/generate-scripts";
 import type {
@@ -10,7 +10,7 @@ import type {
 } from "@/lib/criativo-types";
 import type { GeneratedVideo } from "@/lib/heygen-types";
 import { HeygenDrawer } from "@/components/HeygenDrawer";
-import { hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
+import { hashScript, hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
 import { BriefingHistorySheet } from "@/components/BriefingHistorySheet";
 import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
 import { UrlExtractor } from "@/components/UrlExtractor";
@@ -28,6 +28,8 @@ import { useRealMetrics } from "@/hooks/use-real-metrics";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
+  errorComponent: HomeErrorBoundary,
+  pendingComponent: HomePending,
   head: () => ({
     meta: [
       { title: "CriativoOS — Scripts que param o scroll e vendem" },
@@ -39,6 +41,100 @@ export const Route = createFileRoute("/")({
     ],
   }),
 });
+
+function HomePending() {
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ background: "var(--co-bg)", color: "var(--co-text)" }}
+    >
+      <div className="text-center">
+        <div
+          className="font-display text-3xl tracking-widest mb-3"
+          style={{ color: "var(--co-text)" }}
+        >
+          CRIATIVO·<span style={{ color: "var(--co-red)" }}>OS</span>
+        </div>
+        <div
+          className="text-[11px] font-mono-tech uppercase tracking-widest"
+          style={{ color: "var(--co-text-dim)" }}
+        >
+          carregando sistema…
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HomeErrorBoundary({ error, reset }: { error: Error; reset: () => void }) {
+  const router = useRouter();
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center px-6"
+      style={{ background: "var(--co-bg)", color: "var(--co-text)" }}
+    >
+      <div className="max-w-md w-full text-center">
+        <div
+          className="inline-block px-3 py-1 rounded mb-4 text-[10px] font-mono-tech uppercase tracking-widest"
+          style={{
+            border: "1px solid var(--co-red)",
+            color: "var(--co-red)",
+            background: "color-mix(in oklab, var(--co-red) 8%, transparent)",
+          }}
+        >
+          ⚠ ERRO INESPERADO
+        </div>
+        <h1
+          className="font-display text-3xl tracking-wider mb-3"
+          style={{ color: "var(--co-text)" }}
+        >
+          ALGO QUEBROU AQUI
+        </h1>
+        <p
+          className="text-sm mb-5"
+          style={{ color: "var(--co-text-dim)" }}
+        >
+          A página caiu antes de renderizar. Tenta de novo, ou volta pro início.
+        </p>
+        {import.meta.env.DEV && error.message && (
+          <pre
+            className="mb-5 max-h-40 overflow-auto rounded p-3 text-left font-mono text-[11px]"
+            style={{
+              background: "var(--co-surface)",
+              border: "1px solid var(--co-border)",
+              color: "var(--co-red)",
+            }}
+          >
+            {error.message}
+          </pre>
+        )}
+        <div className="flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
+            className="px-4 py-2 rounded font-mono text-xs font-bold uppercase tracking-widest"
+            style={{ background: "var(--co-red)", color: "#fff" }}
+          >
+            TENTAR DE NOVO
+          </button>
+          <Link
+            to="/"
+            className="px-4 py-2 rounded font-mono text-xs font-bold uppercase tracking-widest"
+            style={{
+              border: "1px solid var(--co-border-strong)",
+              color: "var(--co-text)",
+            }}
+          >
+            INÍCIO
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type Step = "briefing" | "analise" | "scripts" | "producao";
 const STEPS: Step[] = ["briefing", "analise", "scripts", "producao"];
@@ -945,9 +1041,10 @@ function CriativoOS() {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || `Erro (${res.status}).`);
+    const key = hashScript(src);
     setTranslations((prev) => ({
       ...prev,
-      [idx]: { ...(prev[idx] || {}), [lang]: json.script as Script },
+      [key]: { ...(prev[key] || {}), [lang]: json.script as Script },
     }));
   };
 
@@ -1754,7 +1851,7 @@ function CriativoOS() {
                     setProducingIndex(idx);
                   }}
                   generatedVideo={generatedVideos[i]}
-                  translations={translations[i] || {}}
+                  translations={translations[hashScript(s)] || {}}
                   onTranslate={translateScript}
                 />
               ))}

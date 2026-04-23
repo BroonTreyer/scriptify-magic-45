@@ -12,6 +12,7 @@ import type {
   HeygenVideoStatus,
   HeygenVoice,
 } from "@/lib/heygen-types";
+import { useHeygenAssets } from "@/hooks/use-heygen-assets";
 import type { Script } from "@/lib/criativo-types";
 import {
   jobsToCsv,
@@ -39,10 +40,8 @@ function buildScriptText(s: Script): string {
 }
 
 export function BatchMatrix({ open, onOpenChange, scripts }: Props) {
-  const [avatars, setAvatars] = useState<HeygenAvatar[]>([]);
-  const [voices, setVoices] = useState<HeygenVoice[]>([]);
-  const [loadingMeta, setLoadingMeta] = useState(false);
-  const [metaError, setMetaError] = useState<string | null>(null);
+  const { avatars, voices, loading: loadingMeta, error: metaError } =
+    useHeygenAssets(open);
 
   // Selections
   const [selScripts, setSelScripts] = useState<Set<number>>(new Set());
@@ -63,36 +62,6 @@ export function BatchMatrix({ open, onOpenChange, scripts }: Props) {
   const jobsRef = useRef<BatchJob[]>([]);
   jobsRef.current = jobs;
 
-  // Load avatars + voices
-  useEffect(() => {
-    if (!open) return;
-    if (avatars.length > 0 && voices.length > 0) return;
-    let cancelled = false;
-    setLoadingMeta(true);
-    setMetaError(null);
-    (async () => {
-      try {
-        const [aRes, vRes] = await Promise.all([
-          fetch("/api/public/heygen/avatars"),
-          fetch("/api/public/heygen/voices"),
-        ]);
-        const aJson = await aRes.json();
-        const vJson = await vRes.json();
-        if (!aRes.ok) throw new Error(aJson.error || "Erro ao carregar avatares.");
-        if (!vRes.ok) throw new Error(vJson.error || "Erro ao carregar vozes.");
-        if (cancelled) return;
-        setAvatars(aJson.avatars ?? []);
-        setVoices(vJson.voices ?? []);
-      } catch (e) {
-        if (!cancelled) setMetaError(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (!cancelled) setLoadingMeta(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, avatars.length, voices.length]);
 
   // Reset state when reopening
   useEffect(() => {
