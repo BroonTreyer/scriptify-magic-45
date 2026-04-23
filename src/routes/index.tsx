@@ -1745,11 +1745,11 @@ function CriativoOS() {
 
             <div className="lg:pl-8">
               {scripts.map((s, i) => (
-                <ScriptCard
+                <ScriptCardImpl
                   key={i}
                   script={s}
                   index={i}
-                  onProduce={(idx, override) => {
+                  onProduce={(idx: number, override?: Script) => {
                     setProducingScript(override ?? scripts[idx]);
                     setProducingIndex(idx);
                   }}
