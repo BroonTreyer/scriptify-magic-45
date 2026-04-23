@@ -29,18 +29,17 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Script Spark generates ad scripts and production guides for marketing campaigns." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Script Spark generates ad scripts and production guides for marketing campaigns." },
+      { title: "CriativoOS — Sistema de scripts publicitários com IA" },
+      {
+        name: "description",
+        content:
+          "Cole uma URL, descreva o cliente em 4 frases e receba scripts publicitários prontos pra rodar no Meta Ads, TikTok e YouTube — com guia de produção HeyGen, voz clonada e tradução em 6 idiomas.",
+      },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Script Spark generates ad scripts and production guides for marketing campaigns." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ca07d2ad-9573-46a4-a5d3-cd185191ee3d/id-preview-788017fa--34218bd9-2b3a-4735-837f-56dd9e5255ba.lovable.app-1776879130669.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ca07d2ad-9573-46a4-a5d3-cd185191ee3d/id-preview-788017fa--34218bd9-2b3a-4735-837f-56dd9e5255ba.lovable.app-1776879130669.png" },
+      { property: "og:site_name", content: "CriativoOS" },
+      { name: "twitter:card", content: "summary_large_image" },
+      // Per-route head() defines og:title/og:description so each page can override.
+      // No og:image at root — leaf routes can supply their own.
     ],
     links: [
       {

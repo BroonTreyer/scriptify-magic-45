@@ -24,6 +24,7 @@ import {
   type LanguageCode,
   type TranslationMap,
 } from "@/lib/translation-storage";
+import { useRealMetrics } from "@/hooks/use-real-metrics";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
@@ -104,25 +105,16 @@ function formatAllScripts(scripts: Script[]): string {
    ────────────────────────────────────────────────────────── */
 function StatusRail() {
   const [sessionId, setSessionId] = useState("0000");
-  const [lat, setLat] = useState(218);
   useEffect(() => {
     setSessionId(Math.random().toString(16).slice(2, 6).toUpperCase());
-    const t = setInterval(
-      () => setLat(180 + Math.floor(Math.random() * 90)),
-      2200,
-    );
-    return () => clearInterval(t);
   }, []);
 
   const items = [
     `SESSION ${sessionId}`,
     `MODEL claude-sonnet-4.5`,
-    `LAT ${lat}ms`,
-    `REGION br-sp`,
-    `BUILD v2.4.0`,
     `ENGINE briefing.v2`,
-    `STREAM sse/h2`,
-    `STATUS nominal`,
+    `STREAM server-sent events`,
+    `STACK heygen · elevenlabs · firecrawl`,
   ];
   const line = items.map((x) => `// ${x}`).join("    ·    ");
 
@@ -416,33 +408,6 @@ function SectionHeader({
 /* ──────────────────────────────────────────────────────────
    SCRIPT CARDS (logic preserved)
    ────────────────────────────────────────────────────────── */
-function ScriptCard({
-  script,
-  index,
-  onProduce,
-  generatedVideo,
-  translations,
-  onTranslate,
-}: {
-  script: Script;
-  index: number;
-  onProduce: (i: number, override?: Script) => void;
-  generatedVideo?: GeneratedVideo;
-  translations: Partial<Record<LanguageCode, Script>>;
-  onTranslate: (i: number, lang: LanguageCode) => Promise<void>;
-}) {
-  return (
-    <ScriptCardImpl
-      script={script}
-      index={index}
-      onProduce={onProduce}
-      generatedVideo={generatedVideo}
-      translations={translations}
-      onTranslate={onTranslate}
-    />
-  );
-}
-
 function CopyAllButton({ scripts }: { scripts: Script[] }) {
   const [copied, setCopied] = useState(false);
   const onCopy = () => {
@@ -920,6 +885,7 @@ function CriativoOS() {
   const [step, setStep] = useState<Step>("briefing");
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MSGS[0]);
+  const metrics = useRealMetrics();
   const [analise, setAnalise] = useState<Analise | null>(null);
   const [scripts, setScripts] = useState<Script[]>([]);
   const [guiaProducao, setGuiaProducao] = useState<GuiaProducao | null>(null);
@@ -1227,11 +1193,9 @@ function CriativoOS() {
               className="hidden md:flex items-center gap-2 pl-4 border-l text-[10px] font-mono-tech uppercase tracking-widest"
               style={{ borderColor: "var(--co-border)", color: "var(--co-text-dim)" }}
             >
-              <span>v2.4</span>
-              <span style={{ color: "var(--co-border-strong)" }}>·</span>
               <span>claude-sonnet-4.5</span>
               <span style={{ color: "var(--co-border-strong)" }}>·</span>
-              <span style={{ color: "var(--co-green)" }}>● LIVE</span>
+              <span>heygen · elevenlabs</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1349,9 +1313,9 @@ function CriativoOS() {
                    border: "1px solid var(--co-border)",
                  }}>
               {[
-                { v: "12.4k", l: "scripts gerados" },
-                { v: "847", l: "vídeos produzidos" },
-                { v: "6", l: "idiomas" },
+                { v: metrics.scripts.toString(), l: "scripts gerados" },
+                { v: metrics.videos.toString(), l: "vídeos produzidos" },
+                { v: `${metrics.languages}/${LANGUAGES.length}`, l: "idiomas usados" },
               ].map((m, i) => (
                 <div key={m.l} className="flex items-center gap-6">
                   <div>
@@ -1781,11 +1745,11 @@ function CriativoOS() {
 
             <div className="lg:pl-8">
               {scripts.map((s, i) => (
-                <ScriptCard
+                <ScriptCardImpl
                   key={i}
                   script={s}
                   index={i}
-                  onProduce={(idx, override) => {
+                  onProduce={(idx: number, override?: Script) => {
                     setProducingScript(override ?? scripts[idx]);
                     setProducingIndex(idx);
                   }}
@@ -1960,7 +1924,7 @@ function CriativoOS() {
       >
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between text-[10px] font-mono-tech uppercase tracking-widest"
              style={{ color: "var(--co-text-dim)" }}>
-          <span>© CRIATIVO·OS · BUILT FOR PERFORMANCE</span>
+          <span>© CRIATIVO·OS · scripts publicitários com ia</span>
           <span className="hidden sm:inline">claude · heygen · elevenlabs · firecrawl</span>
         </div>
       </footer>
