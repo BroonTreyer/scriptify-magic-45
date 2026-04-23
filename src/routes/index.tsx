@@ -885,6 +885,7 @@ function CriativoOS() {
   const [step, setStep] = useState<Step>("briefing");
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MSGS[0]);
+  const metrics = useRealMetrics();
   const [analise, setAnalise] = useState<Analise | null>(null);
   const [scripts, setScripts] = useState<Script[]>([]);
   const [guiaProducao, setGuiaProducao] = useState<GuiaProducao | null>(null);
@@ -1312,9 +1313,9 @@ function CriativoOS() {
                    border: "1px solid var(--co-border)",
                  }}>
               {[
-                { v: "12.4k", l: "scripts gerados" },
-                { v: "847", l: "vídeos produzidos" },
-                { v: "6", l: "idiomas" },
+                { v: metrics.scripts.toString(), l: "scripts gerados" },
+                { v: metrics.videos.toString(), l: "vídeos produzidos" },
+                { v: `${metrics.languages}/${LANGUAGES.length}`, l: "idiomas usados" },
               ].map((m, i) => (
                 <div key={m.l} className="flex items-center gap-6">
                   <div>
