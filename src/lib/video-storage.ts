@@ -15,6 +15,15 @@ export function hashScripts(scripts: Script[]): string {
   return (h >>> 0).toString(36);
 }
 
+export function hashScript(s: Script): string {
+  const input = `${s.hook ?? ""}|${s.agitacao ?? ""}|${s.cta ?? ""}`;
+  let h = 5381;
+  for (let i = 0; i < input.length; i++) {
+    h = ((h << 5) + h + input.charCodeAt(i)) | 0;
+  }
+  return (h >>> 0).toString(36);
+}
+
 function safeLS(): Storage | null {
   try {
     if (typeof window === "undefined") return null;
