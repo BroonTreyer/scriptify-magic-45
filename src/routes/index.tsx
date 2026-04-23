@@ -1191,11 +1191,9 @@ function CriativoOS() {
               className="hidden md:flex items-center gap-2 pl-4 border-l text-[10px] font-mono-tech uppercase tracking-widest"
               style={{ borderColor: "var(--co-border)", color: "var(--co-text-dim)" }}
             >
-              <span>v2.4</span>
-              <span style={{ color: "var(--co-border-strong)" }}>·</span>
               <span>claude-sonnet-4.5</span>
               <span style={{ color: "var(--co-border-strong)" }}>·</span>
-              <span style={{ color: "var(--co-green)" }}>● LIVE</span>
+              <span>heygen · elevenlabs</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1924,7 +1922,7 @@ function CriativoOS() {
       >
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between text-[10px] font-mono-tech uppercase tracking-widest"
              style={{ color: "var(--co-text-dim)" }}>
-          <span>© CRIATIVO·OS · BUILT FOR PERFORMANCE</span>
+          <span>© CRIATIVO·OS · scripts publicitários com ia</span>
           <span className="hidden sm:inline">claude · heygen · elevenlabs · firecrawl</span>
         </div>
       </footer>
