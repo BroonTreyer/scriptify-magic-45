@@ -11,6 +11,7 @@ import type {
 import type { GeneratedVideo } from "@/lib/heygen-types";
 import { HeygenDrawer } from "@/components/HeygenDrawer";
 import { hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
+import { hashScript } from "@/lib/video-storage";
 import { BriefingHistorySheet } from "@/components/BriefingHistorySheet";
 import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
 import { UrlExtractor } from "@/components/UrlExtractor";
@@ -945,9 +946,10 @@ function CriativoOS() {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || `Erro (${res.status}).`);
+    const key = hashScript(src);
     setTranslations((prev) => ({
       ...prev,
-      [idx]: { ...(prev[idx] || {}), [lang]: json.script as Script },
+      [key]: { ...(prev[key] || {}), [lang]: json.script as Script },
     }));
   };
 
@@ -1754,7 +1756,7 @@ function CriativoOS() {
                     setProducingIndex(idx);
                   }}
                   generatedVideo={generatedVideos[i]}
-                  translations={translations[i] || {}}
+                  translations={translations[hashScript(s)] || {}}
                   onTranslate={translateScript}
                 />
               ))}
