@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 
 type FirecrawlScrapeResp = {
   success?: boolean;
@@ -27,6 +28,10 @@ const TOM_VALUES = [
   "Humor / Provocação",
 ];
 
+const Body = z.object({
+  url: z.string().min(1).max(2048).url(),
+});
+
 export const Route = createFileRoute("/api/public/extract-url")({
   server: {
     handlers: {
@@ -42,13 +47,13 @@ export const Route = createFileRoute("/api/public/extract-url")({
 
         let url: string;
         try {
-          const body = (await request.json()) as { url?: string };
-          if (!body.url || typeof body.url !== "string") throw new Error();
-          url = body.url.trim();
-          // Validate URL
-          new URL(url);
-        } catch {
-          return json({ error: "URL inválida." }, 400);
+          const parsed = Body.parse(await request.json());
+          url = parsed.url.trim();
+        } catch (e) {
+          return json({
+            error: "URL inválida.",
+            detail: e instanceof Error ? e.message : String(e),
+          }, 400);
         }
 
         // 1) Scrape com Firecrawl
