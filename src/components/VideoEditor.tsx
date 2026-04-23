@@ -170,15 +170,44 @@ export function VideoEditor({ open, onOpenChange, videoUrl, videoLabel }: Props)
     setExportUrl(null);
     setExportError(null);
 
+    // Avoid AudioContext "InvalidStateError: source already connected".
+    // We never reuse the preview <video> as an AudioNode source — instead we
+    // create a fresh hidden <video> per export. The preview keeps playing the
+    // original element with its native audio.
+    const exportVideo = document.createElement("video");
+    exportVideo.src = videoUrl;
+    exportVideo.crossOrigin = "anonymous";
+    exportVideo.muted = false;
+    exportVideo.preload = "auto";
+    exportVideo.playsInline = true;
+
+    let audioCtx: AudioContext | null = null;
+    let exportMusic: HTMLAudioElement | null = null;
+
     try {
+      await new Promise<void>((resolve, reject) => {
+        const onReady = () => {
+          exportVideo.removeEventListener("loadedmetadata", onReady);
+          exportVideo.removeEventListener("error", onError);
+          resolve();
+        };
+        const onError = () => {
+          exportVideo.removeEventListener("loadedmetadata", onReady);
+          exportVideo.removeEventListener("error", onError);
+          reject(new Error("Falha ao carregar vídeo para exportar."));
+        };
+        exportVideo.addEventListener("loadedmetadata", onReady);
+        exportVideo.addEventListener("error", onError);
+      });
+
       // Pause everything first
       v.pause();
       musicRef.current?.pause();
 
       // Build composition canvas
       const comp = document.createElement("canvas");
-      comp.width = v.videoWidth;
-      comp.height = v.videoHeight;
+      comp.width = exportVideo.videoWidth || v.videoWidth;
+      comp.height = exportVideo.videoHeight || v.videoHeight;
       const cctx = comp.getContext("2d");
       if (!cctx) throw new Error("Canvas indisponível.");
 
@@ -189,24 +218,27 @@ export function VideoEditor({ open, onOpenChange, videoUrl, videoLabel }: Props)
         (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext ||
         (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtxCtor) throw new Error("AudioContext indisponível.");
-      const audioCtx = new AudioCtxCtor();
+      audioCtx = new AudioCtxCtor();
       const dest = audioCtx.createMediaStreamDestination();
 
-      // Voice from video element
-      const voiceSrc = audioCtx.createMediaElementSource(v);
+      // Voice from FRESH hidden video element (never reused → never throws).
+      const voiceSrc = audioCtx.createMediaElementSource(exportVideo);
       const voiceGain = audioCtx.createGain();
       voiceGain.gain.value = voiceVolume;
       voiceSrc.connect(voiceGain).connect(dest);
-      // Also keep audible in editor (already piping; reconnect to destination)
-      voiceGain.connect(audioCtx.destination);
+      // Do NOT connect to audioCtx.destination: the preview element gives audio
+      // feedback. The hidden export video stays muted to the user.
 
       let musicSrc: MediaElementAudioSourceNode | null = null;
-      if (music && musicRef.current) {
-        musicSrc = audioCtx.createMediaElementSource(musicRef.current);
+      if (music) {
+        // Fresh <audio> for music too, so re-export works without reconnect.
+        exportMusic = new Audio(music.url);
+        exportMusic.crossOrigin = "anonymous";
+        exportMusic.loop = true;
+        musicSrc = audioCtx.createMediaElementSource(exportMusic);
         const musicGain = audioCtx.createGain();
         musicGain.gain.value = musicVolume;
         musicSrc.connect(musicGain).connect(dest);
-        musicGain.connect(audioCtx.destination);
       }
 
       for (const track of dest.stream.getAudioTracks()) stream.addTrack(track);
@@ -227,13 +259,13 @@ export function VideoEditor({ open, onOpenChange, videoUrl, videoLabel }: Props)
       });
 
       // Seek and play
-      v.currentTime = trim.start;
+      exportVideo.currentTime = trim.start;
       await new Promise<void>((r) => {
         const onSeek = () => {
-          v.removeEventListener("seeked", onSeek);
+          exportVideo.removeEventListener("seeked", onSeek);
           r();
         };
-        v.addEventListener("seeked", onSeek);
+        exportVideo.addEventListener("seeked", onSeek);
       });
 
       recorder.start(250);
@@ -244,9 +276,9 @@ export function VideoEditor({ open, onOpenChange, videoUrl, videoLabel }: Props)
       let stop = false;
       const renderLoop = () => {
         if (stop) return;
-        cctx.drawImage(v, 0, 0, comp.width, comp.height);
+        cctx.drawImage(exportVideo, 0, 0, comp.width, comp.height);
         if (captions.length > 0) {
-          const tNow = v.currentTime;
+          const tNow = exportVideo.currentTime;
           const active = captions.find((c) => tNow >= c.start && tNow <= c.end);
           if (active) drawCaption(cctx, comp.width, comp.height, active.text, captionStyle);
         }
@@ -256,16 +288,16 @@ export function VideoEditor({ open, onOpenChange, videoUrl, videoLabel }: Props)
       };
       requestAnimationFrame(renderLoop);
 
-      v.play();
-      if (music && musicRef.current) {
-        musicRef.current.currentTime = 0;
-        musicRef.current.play().catch(() => {});
+      await exportVideo.play();
+      if (exportMusic) {
+        exportMusic.currentTime = 0;
+        exportMusic.play().catch(() => {});
       }
 
       // Wait for trim end
       await new Promise<void>((r) => {
         const check = () => {
-          if (v.currentTime >= trim.end) {
+          if (exportVideo.currentTime >= trim.end) {
             r();
             return;
           }
@@ -275,21 +307,28 @@ export function VideoEditor({ open, onOpenChange, videoUrl, videoLabel }: Props)
       });
 
       stop = true;
-      v.pause();
-      musicRef.current?.pause();
+      exportVideo.pause();
+      exportMusic?.pause();
       recorder.stop();
       const blob = await finished;
-      try {
-        await audioCtx.close();
-      } catch {
-        /* ignore */
-      }
       const url = URL.createObjectURL(blob);
       setExportUrl(url);
       setExportProgress(1);
     } catch (e) {
       setExportError(e instanceof Error ? e.message : String(e));
     } finally {
+      try {
+        if (audioCtx) await audioCtx.close();
+      } catch {
+        /* ignore */
+      }
+      try {
+        exportVideo.pause();
+        exportVideo.removeAttribute("src");
+        exportVideo.load();
+      } catch {
+        /* ignore */
+      }
       setExporting(false);
     }
   };

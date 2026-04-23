@@ -10,8 +10,7 @@ import type {
 } from "@/lib/criativo-types";
 import type { GeneratedVideo } from "@/lib/heygen-types";
 import { HeygenDrawer } from "@/components/HeygenDrawer";
-import { hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
-import { hashScript } from "@/lib/video-storage";
+import { hashScript, hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
 import { BriefingHistorySheet } from "@/components/BriefingHistorySheet";
 import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
 import { UrlExtractor } from "@/components/UrlExtractor";
