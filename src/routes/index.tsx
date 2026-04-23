@@ -16,7 +16,6 @@ import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
 import { UrlExtractor } from "@/components/UrlExtractor";
 import { BatchMatrix } from "@/components/BatchMatrix";
 import { UGCStudio } from "@/components/UGCStudio";
-import { VideoEditor } from "@/components/VideoEditor";
 import {
   LANGUAGES,
   loadTranslations,
@@ -25,6 +24,12 @@ import {
   type TranslationMap,
 } from "@/lib/translation-storage";
 import { useRealMetrics } from "@/hooks/use-real-metrics";
+import { StatusRail } from "@/components/home/StatusRail";
+import { BriefingSidebar } from "@/components/home/BriefingSidebar";
+import {
+  ScriptCard,
+  formatAllScripts,
+} from "@/components/home/ScriptCard";
 
 export const Route = createFileRoute("/")({
   component: CriativoOS,
