@@ -1350,7 +1350,7 @@ function CriativoOS() {
 
             <div className="lg:pl-8">
               {scripts.map((s, i) => (
-                <ScriptCardImpl
+                <ScriptCard
                   key={i}
                   script={s}
                   index={i}
