@@ -104,25 +104,16 @@ function formatAllScripts(scripts: Script[]): string {
    ────────────────────────────────────────────────────────── */
 function StatusRail() {
   const [sessionId, setSessionId] = useState("0000");
-  const [lat, setLat] = useState(218);
   useEffect(() => {
     setSessionId(Math.random().toString(16).slice(2, 6).toUpperCase());
-    const t = setInterval(
-      () => setLat(180 + Math.floor(Math.random() * 90)),
-      2200,
-    );
-    return () => clearInterval(t);
   }, []);
 
   const items = [
     `SESSION ${sessionId}`,
     `MODEL claude-sonnet-4.5`,
-    `LAT ${lat}ms`,
-    `REGION br-sp`,
-    `BUILD v2.4.0`,
     `ENGINE briefing.v2`,
-    `STREAM sse/h2`,
-    `STATUS nominal`,
+    `STREAM server-sent events`,
+    `STACK heygen · elevenlabs · firecrawl`,
   ];
   const line = items.map((x) => `// ${x}`).join("    ·    ");
 
@@ -416,33 +407,6 @@ function SectionHeader({
 /* ──────────────────────────────────────────────────────────
    SCRIPT CARDS (logic preserved)
    ────────────────────────────────────────────────────────── */
-function ScriptCard({
-  script,
-  index,
-  onProduce,
-  generatedVideo,
-  translations,
-  onTranslate,
-}: {
-  script: Script;
-  index: number;
-  onProduce: (i: number, override?: Script) => void;
-  generatedVideo?: GeneratedVideo;
-  translations: Partial<Record<LanguageCode, Script>>;
-  onTranslate: (i: number, lang: LanguageCode) => Promise<void>;
-}) {
-  return (
-    <ScriptCardImpl
-      script={script}
-      index={index}
-      onProduce={onProduce}
-      generatedVideo={generatedVideo}
-      translations={translations}
-      onTranslate={onTranslate}
-    />
-  );
-}
-
 function CopyAllButton({ scripts }: { scripts: Script[] }) {
   const [copied, setCopied] = useState(false);
   const onCopy = () => {
