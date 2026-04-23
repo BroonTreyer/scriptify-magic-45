@@ -14,7 +14,11 @@ const BriefingSchema = z.object({
   plataforma: z.string().min(1).max(80),
   duracao: z.string().min(1).max(40),
   concorrente: z.string().max(500).optional().default(""),
-  numScripts: z.number().int().min(1).max(10),
+  // Aceita number ou string ("1".."10") — UI envia string
+  numScripts: z.union([z.number(), z.string()]).transform((v) => String(v))
+    .refine((s) => /^\d+$/.test(s) && Number(s) >= 1 && Number(s) <= 10, {
+      message: "numScripts deve ser entre 1 e 10",
+    }),
 });
 
 const Body = z.object({ briefing: BriefingSchema });
@@ -34,7 +38,7 @@ export const Route = createFileRoute("/api/public/generate-scripts")({
         let briefing: BriefingInput;
         try {
           const parsed = Body.parse(await request.json());
-          briefing = parsed.briefing as BriefingInput;
+          briefing = parsed.briefing as unknown as BriefingInput;
         } catch (e) {
           return new Response(JSON.stringify({
             error: "Body inválido.",
