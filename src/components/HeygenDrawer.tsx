@@ -10,6 +10,7 @@ import type {
   HeygenRatio,
   HeygenResolution,
   HeygenVideoStatus,
+  HeygenVoice,
 } from "@/lib/heygen-types";
 import type { Script } from "@/lib/criativo-types";
 import { PhotoAvatarUpload } from "@/components/PhotoAvatarUpload";
