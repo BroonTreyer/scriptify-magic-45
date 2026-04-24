@@ -38,17 +38,16 @@ export async function pushBriefing(b: SavedBriefing): Promise<void> {
   const uid = await getUserId();
   if (!uid) return;
   try {
-    await supabase.from("briefings").upsert(
-      {
-        id: b.id.length === 36 ? b.id : undefined, // local IDs aren't UUIDs; let DB gen
-        user_id: uid,
-        title: b.name,
-        data: b.briefing as unknown as Record<string, unknown>,
-        scripts: b.result as unknown as Record<string, unknown>,
-        created_at: b.createdAt,
-      },
-      { onConflict: "id" },
-    );
+    const row: Record<string, unknown> = {
+      user_id: uid,
+      title: b.name,
+      data: b.briefing as unknown as Record<string, unknown>,
+      scripts: b.result as unknown as Record<string, unknown>,
+      created_at: b.createdAt,
+    };
+    if (b.id.length === 36) row.id = b.id;
+    // Cast: the generated Insert type rejects optional `id`; we know the schema accepts it.
+    await supabase.from("briefings").upsert(row as never, { onConflict: "id" });
   } catch {
     /* swallow — local cache remains source */
   }
@@ -129,17 +128,14 @@ export async function pushVideo(
   const uid = await getUserId();
   if (!uid) return;
   try {
-    await supabase.from("videos").upsert(
-      {
-        user_id: uid,
-        script_hash: `${scriptHash}:${index}`,
-        video_id: v.videoId ?? null,
-        video_url: v.videoUrl ?? null,
-        thumbnail_url: v.thumbnailUrl ?? null,
-        metadata: v as unknown as Record<string, unknown>,
-      },
-      { onConflict: "user_id,script_hash" },
-    );
+    const row = {
+      user_id: uid,
+      script_hash: `${scriptHash}:${index}`,
+      video_id: v.videoId ?? null,
+      video_url: v.videoUrl ?? null,
+      metadata: v as unknown as Record<string, unknown>,
+    };
+    await supabase.from("videos").upsert(row as never, { onConflict: "user_id,script_hash" });
   } catch (e) {
     if (isAuthError(e)) return;
   }
@@ -286,12 +282,7 @@ export async function fetchCustomAvatars(): Promise<CustomAvatar[]> {
       (r): CustomAvatar => ({
         avatar_id: r.avatar_id,
         avatar_name: r.avatar_name,
-        gender: "unknown",
         preview_image_url: r.preview_image_url ?? "",
-        preview_video_url: "",
-        premium: false,
-        type: "custom",
-        tags: [],
         groupId: r.group_id ?? undefined,
         status: (r.status as CustomAvatar["status"]) ?? "ready",
         error: r.error ?? undefined,
@@ -363,16 +354,14 @@ export async function pushBatch(b: SavedBatch): Promise<void> {
   const uid = await getUserId();
   if (!uid) return;
   try {
-    await supabase.from("batches").upsert(
-      {
-        id: b.id.length === 36 ? b.id : undefined,
-        user_id: uid,
-        matrix: b as unknown as Record<string, unknown>,
-        status: "active",
-        created_at: b.createdAt,
-      },
-      { onConflict: "id" },
-    );
+    const row: Record<string, unknown> = {
+      user_id: uid,
+      matrix: b as unknown as Record<string, unknown>,
+      status: "active",
+      created_at: b.createdAt,
+    };
+    if (b.id.length === 36) row.id = b.id;
+    await supabase.from("batches").upsert(row as never, { onConflict: "id" });
   } catch {
     /* ignore */
   }
