@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,9 @@ export function ProfileDialog({
   const [fullName, setFullName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -33,6 +35,36 @@ export function ProfileDialog({
     setAvatarUrl(profile?.avatar_url ?? "");
     setError(null);
   }, [open, profile]);
+
+  const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!/^image\//.test(file.type)) {
+      setError("Selecione uma imagem.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Imagem deve ter no máximo 5MB.");
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      setAvatarUrl(data.publicUrl);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -150,6 +182,26 @@ export function ProfileDialog({
                 color: "var(--co-text)",
               }}
             />
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              onChange={onPickFile}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="mt-2 px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-widest disabled:opacity-50"
+              style={{
+                border: "1px solid var(--co-border)",
+                color: "var(--co-text-dim)",
+                background: "var(--co-surface)",
+              }}
+            >
+              {uploading ? "ENVIANDO..." : "📷 ENVIAR FOTO"}
+            </button>
           </div>
 
           {error && (

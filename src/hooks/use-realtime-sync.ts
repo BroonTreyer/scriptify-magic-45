@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { syncOnLogin } from "@/lib/cloud-sync";
+import { toast } from "sonner";
 
 const TABLES = [
   "briefings",
@@ -22,14 +23,29 @@ export function useRealtimeSync(userId: string | null | undefined) {
   useEffect(() => {
     if (!userId) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let firstLoad = true;
+    // Ignore eventos disparados durante a janela inicial de hidratação,
+    // para não tostar todo briefing/video que o syncOnLogin reescreve.
+    let suppressUntil = Date.now() + 4000;
+    const dirtyTables = new Set<string>();
 
-    const trigger = () => {
+    const trigger = (table: string) => {
+      if (Date.now() < suppressUntil) return;
+      dirtyTables.add(table);
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         void syncOnLogin().then(() => {
           if (typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent("criativo-os:sync"));
           }
+          if (!firstLoad && dirtyTables.size > 0) {
+            toast.info("Atualizado em outro dispositivo", {
+              description: Array.from(dirtyTables).join(", "),
+              duration: 3000,
+            });
+          }
+          firstLoad = false;
+          dirtyTables.clear();
         });
       }, 800);
     };
@@ -44,7 +60,7 @@ export function useRealtimeSync(userId: string | null | undefined) {
           table,
           filter: `user_id=eq.${userId}`,
         },
-        trigger,
+        () => trigger(table),
       );
     }
     channel.subscribe();

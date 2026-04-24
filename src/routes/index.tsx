@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { apiFetch } from "@/lib/api-fetch";
-import { useEffect, useMemo, useState } from "react";
+import { tryCooldown, COOLDOWN } from "@/lib/client-cooldown";
+import { toast } from "sonner";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
@@ -13,14 +15,20 @@ import type {
   Script,
 } from "@/lib/criativo-types";
 import type { GeneratedVideo } from "@/lib/heygen-types";
-import { HeygenDrawer } from "@/components/HeygenDrawer";
+const HeygenDrawer = lazy(() =>
+  import("@/components/HeygenDrawer").then((m) => ({ default: m.HeygenDrawer })),
+);
 import { hashScript, hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
 import { BriefingHistorySheet } from "@/components/BriefingHistorySheet";
 import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
 import { ProfileDialog } from "@/components/ProfileDialog";
 import { UrlExtractor } from "@/components/UrlExtractor";
-import { BatchMatrix } from "@/components/BatchMatrix";
-import { UGCStudio } from "@/components/UGCStudio";
+const BatchMatrix = lazy(() =>
+  import("@/components/BatchMatrix").then((m) => ({ default: m.BatchMatrix })),
+);
+const UGCStudio = lazy(() =>
+  import("@/components/UGCStudio").then((m) => ({ default: m.UGCStudio })),
+);
 import {
   LANGUAGES,
   loadTranslations,
@@ -672,6 +680,13 @@ function CriativoOS() {
     setStreamingText("");
 
     try {
+      const cd = tryCooldown("generate-scripts", COOLDOWN.generateScripts);
+      if (cd !== true) {
+        toast.warning(`Aguarde ${Math.ceil(cd / 1000)}s antes de gerar de novo.`);
+        clearInterval(msgInterval);
+        setLoading(false);
+        return;
+      }
       const res = await apiFetch("/api/public/generate-scripts", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1611,33 +1626,46 @@ function CriativoOS() {
         </div>
       </footer>
 
-      <HeygenDrawer
-        open={producingIndex !== null}
-        onOpenChange={(v) => {
-          if (!v) {
-            setProducingIndex(null);
-            setProducingScript(null);
-          }
-        }}
-        script={producingScript ?? (producingIndex !== null ? (scripts[producingIndex] ?? null) : null)}
-        onVideoReady={(v) => {
-          if (producingIndex !== null) {
-            setGeneratedVideos((prev) => ({ ...prev, [producingIndex]: v }));
-          }
-        }}
-      />
+      <Suspense fallback={null}>
+        {producingIndex !== null && (
+          <HeygenDrawer
+            open={producingIndex !== null}
+            onOpenChange={(v) => {
+              if (!v) {
+                setProducingIndex(null);
+                setProducingScript(null);
+              }
+            }}
+            script={
+              producingScript ??
+              (producingIndex !== null ? (scripts[producingIndex] ?? null) : null)
+            }
+            onVideoReady={(v) => {
+              if (producingIndex !== null) {
+                setGeneratedVideos((prev) => ({ ...prev, [producingIndex]: v }));
+              }
+            }}
+          />
+        )}
+      </Suspense>
       <BriefingHistorySheet
         open={historyOpen}
         onOpenChange={setHistoryOpen}
         onLoad={loadFromHistory}
         onNew={reset}
       />
-      <BatchMatrix
-        open={batchOpen}
-        onOpenChange={setBatchOpen}
-        scripts={scripts}
-      />
-      <UGCStudio open={ugcOpen} onOpenChange={setUgcOpen} />
+      <Suspense fallback={null}>
+        {batchOpen && (
+          <BatchMatrix
+            open={batchOpen}
+            onOpenChange={setBatchOpen}
+            scripts={scripts}
+          />
+        )}
+      </Suspense>
+      <Suspense fallback={null}>
+        {ugcOpen && <UGCStudio open={ugcOpen} onOpenChange={setUgcOpen} />}
+      </Suspense>
     </div>
   );
 }

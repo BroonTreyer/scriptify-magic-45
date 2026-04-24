@@ -17,6 +17,8 @@ import type {
   HeygenVoice,
 } from "@/lib/heygen-types";
 import { useHeygenAssets } from "@/hooks/use-heygen-assets";
+import { tryCooldown, COOLDOWN } from "@/lib/client-cooldown";
+import { toast } from "sonner";
 
 type Phase = "idle" | "recording" | "transcribing" | "ready" | "generating" | "polling" | "done" | "error";
 
@@ -205,6 +207,11 @@ export function UGCStudio({
     }
     if (!selectedAvatar || !selectedVoice) {
       setErrorMsg("Selecione um avatar e uma voz antes.");
+      return;
+    }
+    const cd = tryCooldown("heygen-generate", COOLDOWN.heygenGenerate);
+    if (cd !== true) {
+      toast.warning(`Aguarde ${Math.ceil(cd / 1000)}s.`);
       return;
     }
     setErrorMsg(null);
