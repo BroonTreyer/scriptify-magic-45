@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth } from "@/integrations/supabase/require-auth";
 
 type CacheEntry = { at: number; data: unknown };
 let cache: CacheEntry | null = null;

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth } from "@/integrations/supabase/require-auth";
 import { z } from "zod";
 
 const Schema = z.object({
@@ -29,6 +30,8 @@ export const Route = createFileRoute("/api/public/heygen/generate-with-audio")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const __auth = await requireAuth(request);
+        if (__auth instanceof Response) return __auth;
         const heygenKey = process.env.HEYGEN_API_KEY;
         const elevenKey = process.env.ELEVENLABS_API_KEY;
         if (!heygenKey) {

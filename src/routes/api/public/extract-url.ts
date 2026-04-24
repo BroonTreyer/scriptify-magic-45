@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth } from "@/integrations/supabase/require-auth";
 import { z } from "zod";
 
 type FirecrawlScrapeResp = {
@@ -36,6 +37,8 @@ export const Route = createFileRoute("/api/public/extract-url")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const __auth = await requireAuth(request);
+        if (__auth instanceof Response) return __auth;
         const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY;
         const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
         if (!FIRECRAWL_API_KEY) {

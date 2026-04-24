@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth } from "@/integrations/supabase/require-auth";
 
 export const Route = createFileRoute("/api/public/heygen/photo-avatar/status/$groupId")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
+        const __auth = await requireAuth(request);
+        if (__auth instanceof Response) return __auth;
         const apiKey = process.env.HEYGEN_API_KEY;
         if (!apiKey) {
           return new Response(
