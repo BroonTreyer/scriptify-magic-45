@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { apiFetch } from "@/lib/api-fetch";
+import { tryCooldown, COOLDOWN } from "@/lib/client-cooldown";
+import { toast } from "sonner";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -678,6 +680,13 @@ function CriativoOS() {
     setStreamingText("");
 
     try {
+      const cd = tryCooldown("generate-scripts", COOLDOWN.generateScripts);
+      if (cd !== true) {
+        toast.warning(`Aguarde ${Math.ceil(cd / 1000)}s antes de gerar de novo.`);
+        clearInterval(msgInterval);
+        setLoading(false);
+        return;
+      }
       const res = await apiFetch("/api/public/generate-scripts", {
         method: "POST",
         headers: { "content-type": "application/json" },

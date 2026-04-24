@@ -18,6 +18,8 @@ import { PhotoAvatarUpload } from "@/components/PhotoAvatarUpload";
 import { VoiceCloneUpload } from "@/components/VoiceCloneUpload";
 import { isCustomVoiceId } from "@/lib/custom-voices-storage";
 import { useHeygenAssets } from "@/hooks/use-heygen-assets";
+import { tryCooldown, COOLDOWN } from "@/lib/client-cooldown";
+import { toast } from "sonner";
 
 function buildScriptText(s: Script): { text: string; truncated: boolean } {
   const raw = [s.hook, s.agitacao, s.virada, s.prova, s.cta]
@@ -159,6 +161,11 @@ export function HeygenDrawer({
     if (!script) return;
     if (!selectedAvatar || !selectedVoice) {
       setErrorMsg("Selecione um avatar e uma voz antes de gerar.");
+      return;
+    }
+    const cd = tryCooldown("heygen-generate", COOLDOWN.heygenGenerate);
+    if (cd !== true) {
+      toast.warning(`Aguarde ${Math.ceil(cd / 1000)}s.`);
       return;
     }
     setErrorMsg(null);
