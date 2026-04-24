@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { apiFetch } from "@/lib/api-fetch";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -582,7 +583,7 @@ function CriativoOS() {
     if (!src) throw new Error("Script não encontrado.");
     const langDef = LANGUAGES.find((l) => l.code === lang);
     if (!langDef) throw new Error("Idioma inválido.");
-    const res = await fetch("/api/public/translate-script", {
+    const res = await apiFetch("/api/public/translate-script", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -639,7 +640,7 @@ function CriativoOS() {
     setStreamingText("");
 
     try {
-      const res = await fetch("/api/public/generate-scripts", {
+      const res = await apiFetch("/api/public/generate-scripts", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ briefing: form }),

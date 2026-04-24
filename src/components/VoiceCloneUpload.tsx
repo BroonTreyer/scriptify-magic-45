@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import {
   listCustomVoices,
   upsertCustomVoice,
@@ -44,7 +45,7 @@ export function VoiceCloneUpload({
       fd.append("gender", gender);
       fd.append("file", file, file.name);
 
-      const res = await fetch("/api/public/elevenlabs/clone-voice", {
+      const res = await apiFetch("/api/public/elevenlabs/clone-voice", {
         method: "POST",
         body: fd,
       });
