@@ -1,5 +1,5 @@
 import type { GeneratedVideo } from "@/lib/heygen-types";
-import { pushBatch } from "@/lib/cloud-sync";
+import { pushBatch, pushDeleteBatch } from "@/lib/cloud-sync";
 
 const KEY_PREFIX = "criativo-os:batch:";
 const INDEX_KEY = "criativo-os:batch:_index";
@@ -145,6 +145,7 @@ export function deleteBatch(id: string) {
     ls,
     readIndex(ls).filter((k) => k !== id),
   );
+  void pushDeleteBatch(id);
 }
 
 export function newBatchId(): string {
