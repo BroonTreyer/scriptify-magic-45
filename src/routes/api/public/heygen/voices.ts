@@ -9,6 +9,9 @@ export const Route = createFileRoute("/api/public/heygen/voices")({
   server: {
     handlers: {
       GET: async () => {
+        const __req = (await import("@tanstack/react-start/server")).getRequest();
+        const __auth = await requireAuth(__req);
+        if (__auth instanceof Response) return __auth;
         const apiKey = process.env.HEYGEN_API_KEY;
         if (!apiKey) {
           return new Response(
