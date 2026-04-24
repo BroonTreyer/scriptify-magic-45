@@ -47,7 +47,7 @@ export function PhotoAvatarUpload({
     const tick = async () => {
       if (cancelled) return;
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `/api/public/heygen/photo-avatar/status/${encodeURIComponent(trainingGroupId)}`,
         );
         const json = await res.json();

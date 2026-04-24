@@ -190,7 +190,7 @@ export function BatchMatrix({ open, onOpenChange, scripts }: Props) {
             start("failed", { error: "Timeout (>5min)" });
             return;
           }
-          const sRes = await fetch(
+          const sRes = await apiFetch(
             `/api/public/heygen/status/${encodeURIComponent(vId)}`,
           );
           const sJson = (await sRes.json()) as HeygenVideoStatus & {
