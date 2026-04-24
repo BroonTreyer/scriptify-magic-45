@@ -185,7 +185,7 @@ export function HeygenDrawer({
             ratio,
             resolution,
           };
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),

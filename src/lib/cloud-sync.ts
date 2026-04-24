@@ -367,6 +367,68 @@ export async function pushBatch(b: SavedBatch): Promise<void> {
   }
 }
 
+export async function pushDeleteBatch(localId: string): Promise<void> {
+  const uid = await getUserId();
+  if (!uid) return;
+  try {
+    if (localId.length === 36) {
+      await supabase.from("batches").delete().eq("id", localId).eq("user_id", uid);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function fetchBatches(): Promise<SavedBatch[]> {
+  const uid = await getUserId();
+  if (!uid) return [];
+  try {
+    const { data } = await supabase
+      .from("batches")
+      .select("id, matrix, created_at")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false });
+    if (!data) return [];
+    return data
+      .map((r) => {
+        const m = r.matrix as unknown as SavedBatch | null;
+        if (!m || typeof m !== "object") return null;
+        return { ...m, id: r.id, createdAt: r.created_at } as SavedBatch;
+      })
+      .filter((b): b is SavedBatch => b !== null);
+  } catch {
+    return [];
+  }
+}
+
+export async function pushDeleteVideo(scriptHash: string, index: number): Promise<void> {
+  const uid = await getUserId();
+  if (!uid) return;
+  try {
+    await supabase
+      .from("videos")
+      .delete()
+      .eq("user_id", uid)
+      .eq("script_hash", `${scriptHash}:${index}`);
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function pushDeleteTranslations(sessionKey: string): Promise<void> {
+  const uid = await getUserId();
+  if (!uid) return;
+  try {
+    await supabase
+      .from("translations")
+      .delete()
+      .eq("user_id", uid)
+      .like("script_hash", `${sessionKey}:%`);
+  } catch {
+    /* ignore */
+  }
+}
+
 /* ───────── HYDRATION + MIGRATION ───────── */
 
 /**
@@ -386,12 +448,14 @@ export async function syncOnLogin(): Promise<void> {
     transMod,
     avatarsMod,
     voicesMod,
+    batchMod,
   ] = await Promise.all([
     import("@/lib/briefing-storage"),
     import("@/lib/video-storage"),
     import("@/lib/translation-storage"),
     import("@/lib/custom-avatars-storage"),
     import("@/lib/custom-voices-storage"),
+    import("@/lib/batch-storage"),
   ]);
 
   const ls = window.localStorage;
@@ -407,6 +471,9 @@ export async function syncOnLogin(): Promise<void> {
       // custom avatars/voices locais → push
       for (const a of avatarsMod.listCustomAvatars()) await pushCustomAvatar(a);
       for (const v of voicesMod.listCustomVoices()) await pushCustomVoice(v);
+
+      // batches locais → push
+      for (const b of batchMod.listBatches()) await pushBatch(b);
 
       // videos: sobem por scriptsHash de cada briefing local
       for (const b of localBriefings) {
@@ -436,6 +503,26 @@ export async function syncOnLogin(): Promise<void> {
 
     const cloudVoices = await fetchCustomVoices();
     voicesMod.saveCustomVoices(cloudVoices);
+
+    // batches → escreve no LS sem disparar push (já vem do cloud)
+    const cloudBatches = await fetchBatches();
+    if (cloudBatches.length && typeof window !== "undefined") {
+      const ls = window.localStorage;
+      const ids: string[] = [];
+      for (const b of cloudBatches) {
+        try {
+          ls.setItem("criativo-os:batch:" + b.id, JSON.stringify(b));
+          ids.push(b.id);
+        } catch {
+          /* ignore */
+        }
+      }
+      try {
+        ls.setItem("criativo-os:batch:_index", JSON.stringify(ids.slice(0, 10)));
+      } catch {
+        /* ignore */
+      }
+    }
 
     // videos & translations: hidrata por sessionKey de cada briefing
     for (const b of cloudBriefings) {
