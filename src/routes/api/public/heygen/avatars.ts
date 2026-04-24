@@ -8,9 +8,8 @@ const TTL = 5 * 60 * 1000;
 export const Route = createFileRoute("/api/public/heygen/avatars")({
   server: {
     handlers: {
-      GET: async () => {
-        const __req = (await import("@tanstack/react-start/server")).getRequest();
-        const __auth = await requireAuth(__req);
+      GET: async ({ request }) => {
+        const __auth = await requireAuth(request);
         if (__auth instanceof Response) return __auth;
         const apiKey = process.env.HEYGEN_API_KEY;
         if (!apiKey) {
