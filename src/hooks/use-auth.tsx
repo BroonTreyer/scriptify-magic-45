@@ -14,6 +14,7 @@ type AuthCtx = {
   profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  setProfile: (p: Profile | null) => void;
 };
 
 const Ctx = createContext<AuthCtx>({
@@ -22,6 +23,7 @@ const Ctx = createContext<AuthCtx>({
   profile: null,
   loading: true,
   signOut: async () => {},
+  setProfile: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -80,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         loading,
         signOut,
+        setProfile,
       }}
     >
       {children}
