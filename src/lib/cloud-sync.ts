@@ -415,6 +415,20 @@ export async function pushDeleteVideo(scriptHash: string, index: number): Promis
   }
 }
 
+export async function pushDeleteVideosByPrefix(sessionKey: string): Promise<void> {
+  const uid = await getUserId();
+  if (!uid) return;
+  try {
+    await supabase
+      .from("videos")
+      .delete()
+      .eq("user_id", uid)
+      .like("script_hash", `${sessionKey}:%`);
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function pushDeleteTranslations(sessionKey: string): Promise<void> {
   const uid = await getUserId();
   if (!uid) return;

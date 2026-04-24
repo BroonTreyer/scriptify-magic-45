@@ -1,6 +1,6 @@
 import type { Script } from "@/lib/criativo-types";
 import type { GeneratedVideo } from "@/lib/heygen-types";
-import { pushVideo } from "@/lib/cloud-sync";
+import { pushVideo, pushDeleteVideo } from "@/lib/cloud-sync";
 
 const PREFIX = "criativo-os:videos:";
 const INDEX_KEY = "criativo-os:videos:_index";
@@ -125,5 +125,42 @@ export function saveVideos(
     const idx = Number(idxStr);
     const v = videos[idx];
     if (v) void pushVideo(sessionKey, idx, v);
+  }
+}
+
+/** Remove um vídeo individual do cache local + cloud. */
+export function deleteVideo(sessionKey: string, index: number) {
+  const ls = safeLS();
+  if (ls) {
+    const cur = loadVideos(sessionKey);
+    if (index in cur) {
+      delete cur[index];
+      try {
+        ls.setItem(PREFIX + sessionKey, JSON.stringify(cur));
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  void pushDeleteVideo(sessionKey, index);
+}
+
+/** Remove todos os vídeos de um sessionKey (cache local + cloud, se chamado com pushCloud). */
+export function clearVideos(sessionKey: string, pushCloud = true) {
+  const ls = safeLS();
+  if (ls) {
+    try {
+      ls.removeItem(PREFIX + sessionKey);
+    } catch {
+      /* ignore */
+    }
+    writeIndex(ls, readIndex(ls).filter((k) => k !== sessionKey));
+  }
+  if (pushCloud) {
+    // delete todas as entradas que casam com o prefixo no cloud
+    void (async () => {
+      const { pushDeleteVideosByPrefix } = await import("@/lib/cloud-sync");
+      await pushDeleteVideosByPrefix(sessionKey);
+    })();
   }
 }

@@ -3,6 +3,7 @@ import { apiFetch } from "@/lib/api-fetch";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import { extractJson } from "@/server/generate-scripts";
 import type {
   Analise,
@@ -16,6 +17,7 @@ import { HeygenDrawer } from "@/components/HeygenDrawer";
 import { hashScript, hashScripts, loadVideos, saveVideos } from "@/lib/video-storage";
 import { BriefingHistorySheet } from "@/components/BriefingHistorySheet";
 import { saveBriefing, type SavedBriefing } from "@/lib/briefing-storage";
+import { ProfileDialog } from "@/components/ProfileDialog";
 import { UrlExtractor } from "@/components/UrlExtractor";
 import { BatchMatrix } from "@/components/BatchMatrix";
 import { UGCStudio } from "@/components/UGCStudio";
@@ -51,8 +53,10 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const { user, profile, loading, signOut } = useAuth();
+  const { user, profile, loading, signOut, setProfile } = useAuth();
   const navigate = useNavigate();
+  const [profileOpen, setProfileOpen] = useState(false);
+  useRealtimeSync(user?.id);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -74,20 +78,30 @@ function HomePage() {
   return (
     <>
       <div className="fixed top-3 right-3 z-50 flex items-center gap-2">
-        {profile?.avatar_url ? (
-          <img
-            src={profile.avatar_url}
-            alt=""
-            className="h-7 w-7 rounded-full border border-border object-cover"
-          />
-        ) : (
-          <div className="h-7 w-7 rounded-full border border-border bg-card flex items-center justify-center text-[10px] font-mono uppercase">
-            {(profile?.full_name || user.email || "?").slice(0, 1)}
-          </div>
-        )}
-        <span className="text-xs font-mono opacity-70 hidden sm:inline">
-          {profile?.full_name || user.email}
-        </span>
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          className="flex items-center gap-2 px-2 py-1 rounded border border-border bg-card hover:bg-accent"
+          title="Editar perfil"
+        >
+          {profile?.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt=""
+              className="h-6 w-6 rounded-full object-cover"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+          ) : (
+            <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-mono uppercase">
+              {(profile?.full_name || user.email || "?").slice(0, 1)}
+            </div>
+          )}
+          <span className="text-xs font-mono opacity-80 hidden sm:inline">
+            {profile?.full_name || user.email}
+          </span>
+        </button>
         <button
           onClick={() => {
             signOut();
@@ -98,6 +112,13 @@ function HomePage() {
           Sair
         </button>
       </div>
+      <ProfileDialog
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        user={user}
+        profile={profile}
+        onSaved={setProfile}
+      />
       <CriativoOS />
     </>
   );

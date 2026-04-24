@@ -1,5 +1,5 @@
 import type { Script } from "@/lib/criativo-types";
-import { pushTranslations } from "@/lib/cloud-sync";
+import { pushTranslations, pushDeleteTranslations } from "@/lib/cloud-sync";
 
 export type LanguageCode = "pt" | "en" | "es" | "fr" | "it" | "de";
 
@@ -63,4 +63,17 @@ export function saveTranslations(sessionKey: string, map: TranslationMap) {
     /* ignore quota */
   }
   void pushTranslations(sessionKey, map);
+}
+
+/** Remove todas as traduções de um sessionKey (cache + cloud). */
+export function clearTranslations(sessionKey: string, pushCloud = true) {
+  const ls = safeLS();
+  if (ls) {
+    try {
+      ls.removeItem(PREFIX + sessionKey);
+    } catch {
+      /* ignore */
+    }
+  }
+  if (pushCloud) void pushDeleteTranslations(sessionKey);
 }

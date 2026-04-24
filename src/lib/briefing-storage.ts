@@ -1,5 +1,7 @@
 import type { BriefingInput, GenerateResult } from "@/lib/criativo-types";
 import { hashScripts } from "@/lib/video-storage";
+import { clearVideos } from "@/lib/video-storage";
+import { clearTranslations } from "@/lib/translation-storage";
 import {
   pushBriefing,
   pushDeleteBriefing,
@@ -112,7 +114,12 @@ export function deleteBriefing(id: string) {
   const all = readAll();
   const target = all.find((b) => b.id === id);
   writeAll(all.filter((b) => b.id !== id));
-  if (target) void pushDeleteBriefing(id, target.name);
+  if (target) {
+    void pushDeleteBriefing(id, target.name);
+    // cascata: remove vídeos e traduções associados
+    clearVideos(target.scriptsHash);
+    clearTranslations(target.scriptsHash);
+  }
 }
 
 export function renameBriefing(id: string, name: string) {
