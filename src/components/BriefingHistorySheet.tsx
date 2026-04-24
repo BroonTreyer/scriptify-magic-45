@@ -36,6 +36,14 @@ export function BriefingHistorySheet({
     setConfirming(null);
   }, [open]);
 
+  // Atualiza lista quando realtime sync dispara
+  useEffect(() => {
+    if (!open) return;
+    const onSync = () => setItems(listBriefings());
+    window.addEventListener("criativo-os:sync", onSync);
+    return () => window.removeEventListener("criativo-os:sync", onSync);
+  }, [open]);
+
   const refresh = () => setItems(listBriefings());
 
   const labelStyle = { color: "var(--co-text-dim)" } as const;

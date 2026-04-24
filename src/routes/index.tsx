@@ -3,6 +3,7 @@ import { apiFetch } from "@/lib/api-fetch";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import { extractJson } from "@/server/generate-scripts";
 import type {
   Analise,
@@ -55,6 +56,7 @@ function HomePage() {
   const { user, profile, loading, signOut, setProfile } = useAuth();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  useRealtimeSync(user?.id);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
