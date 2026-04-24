@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicTranslateScriptRouteImport } from './routes/api/public/translate-script'
 import { Route as ApiPublicGenerateScriptsRouteImport } from './routes/api/public/generate-scripts'
@@ -24,6 +26,16 @@ import { Route as ApiPublicHeygenStatusVideoIdRouteImport } from './routes/api/p
 import { Route as ApiPublicHeygenPhotoAvatarCreateRouteImport } from './routes/api/public/heygen/photo-avatar.create'
 import { Route as ApiPublicHeygenPhotoAvatarStatusGroupIdRouteImport } from './routes/api/public/heygen/photo-avatar.status.$groupId'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -106,6 +118,8 @@ const ApiPublicHeygenPhotoAvatarStatusGroupIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/translate-script': typeof ApiPublicTranslateScriptRoute
@@ -122,6 +136,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/translate-script': typeof ApiPublicTranslateScriptRoute
@@ -139,6 +155,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/api/public/extract-url': typeof ApiPublicExtractUrlRoute
   '/api/public/generate-scripts': typeof ApiPublicGenerateScriptsRoute
   '/api/public/translate-script': typeof ApiPublicTranslateScriptRoute
@@ -157,6 +175,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
+    | '/reset-password'
     | '/api/public/extract-url'
     | '/api/public/generate-scripts'
     | '/api/public/translate-script'
@@ -173,6 +193,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
+    | '/reset-password'
     | '/api/public/extract-url'
     | '/api/public/generate-scripts'
     | '/api/public/translate-script'
@@ -189,6 +211,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/auth'
+    | '/reset-password'
     | '/api/public/extract-url'
     | '/api/public/generate-scripts'
     | '/api/public/translate-script'
@@ -206,6 +230,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicExtractUrlRoute: typeof ApiPublicExtractUrlRoute
   ApiPublicGenerateScriptsRoute: typeof ApiPublicGenerateScriptsRoute
   ApiPublicTranslateScriptRoute: typeof ApiPublicTranslateScriptRoute
@@ -223,6 +249,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -326,6 +366,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicExtractUrlRoute: ApiPublicExtractUrlRoute,
   ApiPublicGenerateScriptsRoute: ApiPublicGenerateScriptsRoute,
   ApiPublicTranslateScriptRoute: ApiPublicTranslateScriptRoute,

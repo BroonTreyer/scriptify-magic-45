@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useAuth } from "@/hooks/use-auth";
 import { extractJson } from "@/server/generate-scripts";
 import type {
   Analise,
@@ -32,7 +34,7 @@ import {
 } from "@/components/home/ScriptCard";
 
 export const Route = createFileRoute("/")({
-  component: CriativoOS,
+  component: HomePage,
   errorComponent: HomeErrorBoundary,
   pendingComponent: HomePending,
   head: () => ({
@@ -46,6 +48,48 @@ export const Route = createFileRoute("/")({
     ],
   }),
 });
+
+function HomePage() {
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/auth" });
+  }, [user, loading, navigate]);
+
+  if (loading || !user) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "var(--co-bg)", color: "var(--co-text)" }}
+      >
+        <div className="font-display text-2xl tracking-widest opacity-60">
+          CARREGANDO...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-2">
+        <span className="text-xs font-mono opacity-70 hidden sm:inline">
+          {user.email}
+        </span>
+        <button
+          onClick={() => {
+            signOut();
+            navigate({ to: "/auth" });
+          }}
+          className="px-3 py-1 rounded text-xs font-mono uppercase tracking-wider border border-border bg-card hover:bg-accent text-foreground"
+        >
+          Sair
+        </button>
+      </div>
+      <CriativoOS />
+    </>
+  );
+}
 
 function HomePending() {
   return (
