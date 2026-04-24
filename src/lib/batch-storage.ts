@@ -1,4 +1,5 @@
 import type { GeneratedVideo } from "@/lib/heygen-types";
+import { pushBatch } from "@/lib/cloud-sync";
 
 const KEY_PREFIX = "criativo-os:batch:";
 const INDEX_KEY = "criativo-os:batch:_index";
@@ -103,6 +104,7 @@ export function saveBatch(batch: SavedBatch) {
       /* give up */
     }
   }
+  void pushBatch(batch);
 }
 
 export function loadBatch(id: string): SavedBatch | null {
