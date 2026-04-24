@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import {
   Sheet,
   SheetContent,
@@ -162,7 +163,7 @@ export function BatchMatrix({ open, onOpenChange, scripts }: Props) {
       }
       start("generating");
       try {
-        const res = await fetch("/api/public/heygen/generate", {
+        const res = await apiFetch("/api/public/heygen/generate", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({

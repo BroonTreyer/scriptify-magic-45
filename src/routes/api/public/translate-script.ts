@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth } from "@/integrations/supabase/require-auth";
 import { z } from "zod";
 
 const ScriptSchema = z.object({
@@ -54,6 +55,8 @@ export const Route = createFileRoute("/api/public/translate-script")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const __auth = await requireAuth(request);
+        if (__auth instanceof Response) return __auth;
         const apiKey = process.env.ANTHROPIC_API_KEY;
         if (!apiKey) {
           return new Response(

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import {
   Sheet,
   SheetContent,
@@ -146,7 +147,7 @@ export function VideoEditor({ open, onOpenChange, videoUrl, videoLabel }: Props)
     setTranscribing(true);
     setTranscribeError(null);
     try {
-      const res = await fetch("/api/public/elevenlabs/transcribe-url", {
+      const res = await apiFetch("/api/public/elevenlabs/transcribe-url", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ videoUrl, language: "por" }),

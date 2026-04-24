@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import type { BriefingInput } from "@/lib/criativo-types";
 
 type Props = {
@@ -25,7 +26,7 @@ export function UrlExtractor({ onExtracted }: Props) {
     setSuccess(false);
     setLoading(true);
     try {
-      const res = await fetch("/api/public/extract-url", {
+      const res = await apiFetch("/api/public/extract-url", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),

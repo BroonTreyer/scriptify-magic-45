@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import {
   listCustomAvatars,
   upsertCustomAvatar,
@@ -121,7 +122,7 @@ export function PhotoAvatarUpload({
     setFilePreview(dataUrl);
 
     try {
-      const res = await fetch("/api/public/heygen/photo-avatar/create", {
+      const res = await apiFetch("/api/public/heygen/photo-avatar/create", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

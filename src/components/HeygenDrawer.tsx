@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import {
   Sheet,
   SheetContent,
@@ -101,7 +102,7 @@ export function HeygenDrawer({
     const poll = async () => {
       if (cancelled) return;
       try {
-        const res = await fetch(`/api/public/heygen/status/${encodeURIComponent(videoId)}`);
+        const res = await apiFetch(`/api/public/heygen/status/${encodeURIComponent(videoId)}`);
         const json = (await res.json()) as HeygenVideoStatus & { error?: string };
         if (cancelled) return;
         if (!res.ok) {

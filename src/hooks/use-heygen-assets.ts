@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import type { HeygenAvatar, HeygenVoice } from "@/lib/heygen-types";
 
 type AssetsState = {
@@ -18,8 +19,8 @@ function notify(state: AssetsState) {
 
 async function fetchAssets(): Promise<{ avatars: HeygenAvatar[]; voices: HeygenVoice[] }> {
   const [aRes, vRes] = await Promise.all([
-    fetch("/api/public/heygen/avatars"),
-    fetch("/api/public/heygen/voices"),
+    apiFetch("/api/public/heygen/avatars"),
+    apiFetch("/api/public/heygen/voices"),
   ]);
   const aJson = await aRes.json();
   const vJson = await vRes.json();

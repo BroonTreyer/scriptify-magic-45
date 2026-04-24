@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth } from "@/integrations/supabase/require-auth";
 import { z } from "zod";
 
 // multipart/form-data: name, gender (opcional), file (audio)
@@ -6,6 +7,8 @@ export const Route = createFileRoute("/api/public/elevenlabs/clone-voice")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const __auth = await requireAuth(request);
+        if (__auth instanceof Response) return __auth;
         const apiKey = process.env.ELEVENLABS_API_KEY;
         if (!apiKey) {
           return new Response(

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api-fetch";
 import {
   Sheet,
   SheetContent,
@@ -77,7 +78,7 @@ export function UGCStudio({
     const poll = async () => {
       if (cancelled) return;
       try {
-        const res = await fetch(`/api/public/heygen/status/${encodeURIComponent(videoId)}`);
+        const res = await apiFetch(`/api/public/heygen/status/${encodeURIComponent(videoId)}`);
         const json = (await res.json()) as HeygenVideoStatus & { error?: string };
         if (cancelled) return;
         if (!res.ok) {
@@ -183,7 +184,7 @@ export function UGCStudio({
       const fname = audioBlob instanceof File ? audioBlob.name : "ugc.webm";
       fd.append("file", audioBlob, fname);
       fd.append("language", "por");
-      const res = await fetch("/api/public/elevenlabs/transcribe", {
+      const res = await apiFetch("/api/public/elevenlabs/transcribe", {
         method: "POST",
         body: fd,
       });
