@@ -1,4 +1,5 @@
 import type { HeygenAvatar } from "@/lib/heygen-types";
+import { pushCustomAvatar, pushDeleteCustomAvatar } from "@/lib/cloud-sync";
 
 const KEY = "criativo-os:custom-avatars";
 
@@ -51,8 +52,10 @@ export function upsertCustomAvatar(a: CustomAvatar) {
   if (idx >= 0) list[idx] = a;
   else list.unshift(a);
   saveCustomAvatars(list);
+  void pushCustomAvatar(a);
 }
 
 export function removeCustomAvatar(avatarId: string) {
   saveCustomAvatars(listCustomAvatars().filter((a) => a.avatar_id !== avatarId));
+  void pushDeleteCustomAvatar(avatarId);
 }
