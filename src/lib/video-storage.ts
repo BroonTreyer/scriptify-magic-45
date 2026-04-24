@@ -1,5 +1,6 @@
 import type { Script } from "@/lib/criativo-types";
 import type { GeneratedVideo } from "@/lib/heygen-types";
+import { pushVideo } from "@/lib/cloud-sync";
 
 const PREFIX = "criativo-os:videos:";
 const INDEX_KEY = "criativo-os:videos:_index";
@@ -118,5 +119,11 @@ export function saveVideos(
     } catch {
       /* give up silently */
     }
+  }
+  // mirror each video entry to cloud
+  for (const idxStr of Object.keys(videos)) {
+    const idx = Number(idxStr);
+    const v = videos[idx];
+    if (v) void pushVideo(sessionKey, idx, v);
   }
 }

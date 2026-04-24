@@ -1,4 +1,5 @@
 const KEY = "criativo-os:custom-voices";
+import { pushCustomVoice, pushDeleteCustomVoice } from "@/lib/cloud-sync";
 
 export type CustomVoice = {
   voice_id: string;
@@ -51,10 +52,12 @@ export function upsertCustomVoice(v: CustomVoice) {
   if (idx >= 0) list[idx] = v;
   else list.unshift(v);
   saveCustomVoices(list);
+  void pushCustomVoice(v);
 }
 
 export function removeCustomVoice(voiceId: string) {
   saveCustomVoices(listCustomVoices().filter((v) => v.voice_id !== voiceId));
+  void pushDeleteCustomVoice(voiceId);
 }
 
 export function isCustomVoiceId(voiceId: string): boolean {

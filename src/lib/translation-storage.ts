@@ -1,4 +1,5 @@
 import type { Script } from "@/lib/criativo-types";
+import { pushTranslations } from "@/lib/cloud-sync";
 
 export type LanguageCode = "pt" | "en" | "es" | "fr" | "it" | "de";
 
@@ -61,4 +62,5 @@ export function saveTranslations(sessionKey: string, map: TranslationMap) {
   } catch {
     /* ignore quota */
   }
+  void pushTranslations(sessionKey, map);
 }

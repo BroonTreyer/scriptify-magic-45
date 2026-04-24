@@ -1,5 +1,10 @@
 import type { BriefingInput, GenerateResult } from "@/lib/criativo-types";
 import { hashScripts } from "@/lib/video-storage";
+import {
+  pushBriefing,
+  pushDeleteBriefing,
+  pushRenameBriefing,
+} from "@/lib/cloud-sync";
 
 const KEY = "criativo-os:briefings";
 const MAX = 20;
@@ -98,17 +103,29 @@ export function saveBriefing(
   const all = readAll();
   all.unshift(item);
   writeAll(all.slice(0, MAX));
+  // mirror to cloud (fire-and-forget)
+  void pushBriefing(item);
   return item;
 }
 
 export function deleteBriefing(id: string) {
-  writeAll(readAll().filter((b) => b.id !== id));
+  const all = readAll();
+  const target = all.find((b) => b.id === id);
+  writeAll(all.filter((b) => b.id !== id));
+  if (target) void pushDeleteBriefing(id, target.name);
 }
 
 export function renameBriefing(id: string, name: string) {
   const all = readAll();
   const idx = all.findIndex((b) => b.id === id);
   if (idx === -1) return;
-  all[idx] = { ...all[idx], name: name.trim() || all[idx].name };
+  const newName = name.trim() || all[idx].name;
+  all[idx] = { ...all[idx], name: newName };
   writeAll(all);
+  void pushRenameBriefing(id, newName);
+}
+
+/** Substitui completamente o cache local por uma lista vinda do cloud. */
+export function replaceAllBriefings(items: SavedBriefing[]) {
+  writeAll(items.slice(0, MAX));
 }
