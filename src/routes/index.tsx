@@ -51,7 +51,7 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -74,8 +74,19 @@ function HomePage() {
   return (
     <>
       <div className="fixed top-3 right-3 z-50 flex items-center gap-2">
+        {profile?.avatar_url ? (
+          <img
+            src={profile.avatar_url}
+            alt=""
+            className="h-7 w-7 rounded-full border border-border object-cover"
+          />
+        ) : (
+          <div className="h-7 w-7 rounded-full border border-border bg-card flex items-center justify-center text-[10px] font-mono uppercase">
+            {(profile?.full_name || user.email || "?").slice(0, 1)}
+          </div>
+        )}
         <span className="text-xs font-mono opacity-70 hidden sm:inline">
-          {user.email}
+          {profile?.full_name || user.email}
         </span>
         <button
           onClick={() => {
