@@ -1,32 +1,44 @@
 
-# Correções dos 5 gaps da auditoria
+## Bug 1 — Loop infinito de toast "Atualizado em outro dispositivo: metrics"
 
-## 1. Aplicar cooldowns faltantes
-- `src/components/UrlExtractor.tsx`: envolver chamada de `/api/public/extract-url` com `tryCooldown("extract-url", COOLDOWN.extractUrl)`; mostrar toast quando bloqueado.
-- `src/components/BatchMatrix.tsx` (e outros call-sites de tradução): envolver `/api/public/translate-script` com `tryCooldown("translate", COOLDOWN.translate)`.
+**Causa:** `metrics` está na lista `TABLES` do `useRealtimeSync`. Cada push do próprio dispositivo (feito pelo `use-real-metrics`) volta como evento realtime → toast → `syncOnLogin` → `dispatchEvent("criativo-os:sync")` → `use-real-metrics` reconta → push → loop.
 
-## 2. Sincronização de métricas na cloud
-- Criar tabela `metrics` (migration): `id uuid pk`, `user_id uuid not null`, `briefing_id uuid`, `script_hash text`, `data jsonb`, `updated_at timestamptz`. RLS owner-scoped (select/insert/update/delete próprios).
-- Habilitar realtime + REPLICA IDENTITY FULL.
-- Em `src/hooks/use-real-metrics.ts`: ler/escrever no Supabase além do localStorage (cache local mantido); push em mudanças, hidratar no `syncOnLogin`.
-- Adicionar `fetchMetrics()` em `src/lib/cloud-sync.ts` e incluir no fluxo de login + realtime hook.
+**Correções em `src/hooks/use-realtime-sync.ts`:**
+1. **Remover `"metrics"` da lista `TABLES`** — métricas são derivadas do localStorage, não precisam de notificação realtime nem rehidratação cruzada (já hidratam do cloud no mount via `fetchMetricsSnapshot`).
+2. **Aumentar `suppressUntil` de 4s para 8s** — `syncOnLogin` faz N chamadas em paralelo e às vezes resolve depois dos 4s, causando o primeiro toast indevido.
+3. **Não tostar tabelas que não são "user-facing"** — manter whitelist de tabelas que merecem toast: `briefings`, `videos`, `batches`, `translations`. `custom_avatars` e `custom_voices` ficam silenciosos (sincronizam mas sem toast) pra reduzir ruído.
 
-## 3. Limpeza de avatares antigos no Storage
-- Em `src/components/ProfileDialog.tsx`, no upload novo:
-  1. Listar arquivos em `${user.id}/` no bucket `avatars`.
-  2. Após upload bem-sucedido, deletar todos os arquivos cujo path ≠ novo path.
-- Best-effort (erros de cleanup não bloqueiam o save).
+**Em `src/hooks/use-real-metrics.ts`:**
+4. **Não fazer push se o snapshot não mudou** — comparar com último valor pushado em ref; só chamar `pushMetricsSnapshot` quando `scripts/videos/languages` realmente mudaram. Isso quebra qualquer eco residual.
 
-## 4. Trim em `full_name` vindo do auth metadata
-- Atualizar a função `public.handle_new_user()` (migration): aplicar `btrim(...)` em `full_name` e `avatar_url` antes do insert; converter strings vazias em NULL via `NULLIF(btrim(...), '')`.
+---
 
-## 5. UI de gestão de admins
-- Em `src/routes/admin.tsx`: adicionar botão "Promover/Remover admin" por usuário.
-- Criar RPC `admin_set_role(_target uuid, _role app_role, _grant boolean)` com SECURITY DEFINER que valida `has_role(auth.uid(), 'admin')`, faz insert/delete em `user_roles`. Bloquear self-demote (`_target <> auth.uid()`).
-- Estender `admin_list_users()` para retornar `is_admin boolean` (subquery em `user_roles`).
-- Atualizar tipo `AdminUserRow` no front e renderizar badge + botão.
+## Bug 2 — "Failed to execute 'json' on 'Response': Unexpected token 'u', 'upstream r'..."
 
-## Validação final
-- `npx tsc --noEmit` limpo.
-- `bunx vitest run` verde.
-- Linter Supabase sem novos warnings.
+**Causa:** Servidor está respondendo `upstream request timeout` em texto plano (o Firecrawl ou o AI Gateway travou). Cliente faz `res.json()` cego e quebra com mensagem confusa.
+
+**Correções em `src/routes/api/public/extract-url.ts`:**
+1. **Adicionar `AbortController` com timeout** nas duas chamadas externas:
+   - Firecrawl: 25s (scrape pode ser lento)
+   - AI Gateway: 30s
+   - Em timeout, retornar JSON estruturado com 504 e mensagem clara ("A página demorou demais pra responder. Tente novamente ou use uma URL mais simples.").
+2. **try/catch ao redor de `fetch`** — erros de rede também viram JSON, nunca string solta.
+
+**Correções em `src/components/UrlExtractor.tsx`:**
+3. **Parse defensivo da response** — ler `res.text()` primeiro e tentar `JSON.parse`; se falhar, mostrar uma mensagem amigável ("O servidor demorou demais pra responder. Tente novamente em instantes.") em vez do erro técnico do `Response.json()`.
+4. **Mensagens de erro contextualizadas** por status HTTP (402 → créditos, 422 → conteúdo insuficiente, 504/502 → timeout, 429 → rate limit).
+
+---
+
+## Validação
+
+- `npx tsc --noEmit` — typecheck limpo.
+- `bunx vitest run` — testes existentes continuam verdes.
+- Smoke manual no preview: abrir o app → confirmar que o toast "Atualizado em outro dispositivo: metrics" não aparece mais; tentar `extract-url` com uma URL lenta/inválida e ver mensagem amigável em vez do erro técnico.
+
+## Arquivos tocados
+
+- `src/hooks/use-realtime-sync.ts` — remove metrics, whitelist de toasts, suppress 8s
+- `src/hooks/use-real-metrics.ts` — guard de "snapshot mudou?" antes de pushar
+- `src/routes/api/public/extract-url.ts` — timeouts + try/catch JSON-safe
+- `src/components/UrlExtractor.tsx` — parse defensivo + mensagens por status
