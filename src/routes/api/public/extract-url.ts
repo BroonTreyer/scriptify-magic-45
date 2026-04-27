@@ -59,10 +59,13 @@ export const Route = createFileRoute("/api/public/extract-url")({
           }, 400);
         }
 
-        // 1) Scrape com Firecrawl
-        let fcRes: Response;
+        // 1) Scrape com Firecrawl + fallback para leitura direta do HTML.
+        let markdown = "";
+        let meta: { title?: string; description?: string; sourceURL?: string } = {};
+        let scrapeError: string | null = null;
+
         try {
-          fcRes = await fetchWithTimeout(
+          const fcRes = await fetchWithTimeout(
             "https://api.firecrawl.dev/v2/scrape",
             {
               method: "POST",
@@ -78,46 +81,53 @@ export const Route = createFileRoute("/api/public/extract-url")({
             },
             25_000,
           );
+
+          if (!fcRes.ok) {
+            const t = await fcRes.text().catch(() => "");
+            console.error("Firecrawl error", fcRes.status, t);
+            if (fcRes.status === 402) {
+              return json(
+                { error: "Firecrawl sem créditos. Recarregue na sua conta." },
+                402,
+              );
+            }
+            scrapeError = `Falha ao raspar a página (${fcRes.status}).`;
+          } else {
+            try {
+              const fcData = (await fcRes.json()) as FirecrawlScrapeResp;
+              markdown = fcData.data?.markdown ?? fcData.markdown ?? "";
+              meta = fcData.data?.metadata ?? fcData.metadata ?? {};
+            } catch {
+              scrapeError = "Resposta inválida do scraper.";
+            }
+          }
         } catch (e) {
           const isAbort = (e as Error)?.name === "AbortError";
           console.error("Firecrawl fetch failed", e);
-          return json(
-            {
-              error: isAbort
-                ? "A página demorou demais pra responder. Tente novamente ou use uma URL mais simples."
-                : "Falha ao contatar o serviço de scraping.",
-            },
-            isAbort ? 504 : 502,
-          );
+          scrapeError = isAbort
+            ? "A página demorou demais pra responder."
+            : "Falha ao contatar o serviço de scraping.";
         }
 
-        if (!fcRes.ok) {
-          const t = await fcRes.text().catch(() => "");
-          console.error("Firecrawl error", fcRes.status, t);
-          if (fcRes.status === 402) {
-            return json(
-              { error: "Firecrawl sem créditos. Recarregue na sua conta." },
-              402,
-            );
+        if (!markdown || markdown.trim().length < 50) {
+          const fallback = await fetchReadablePage(url);
+          if (fallback.text.trim().length >= 80) {
+            markdown = fallback.text;
+            meta = {
+              title: meta.title ?? fallback.title,
+              description: meta.description ?? fallback.description,
+              sourceURL: meta.sourceURL,
+            };
+            console.warn("extract-url fallback usado", { url, scrapeError });
           }
-          return json(
-            { error: `Falha ao raspar a página (${fcRes.status}).` },
-            502,
-          );
         }
 
-        let fcData: FirecrawlScrapeResp;
-        try {
-          fcData = (await fcRes.json()) as FirecrawlScrapeResp;
-        } catch {
-          return json({ error: "Resposta inválida do scraper." }, 502);
-        }
-        const markdown =
-          fcData.data?.markdown ?? fcData.markdown ?? "";
-        const meta = fcData.data?.metadata ?? fcData.metadata ?? {};
         if (!markdown || markdown.trim().length < 50) {
           return json(
-            { error: "Página retornou conteúdo vazio ou insuficiente." },
+            {
+              error:
+                scrapeError ?? "Página retornou conteúdo vazio ou insuficiente.",
+            },
             422,
           );
         }
