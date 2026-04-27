@@ -1,35 +1,32 @@
 
-# Fase G — Correções e Finalização
+# Correções dos 5 gaps da auditoria
 
-## 1. Fixes Críticos de Auth (401 Unauthorized)
-Trocar `fetch` por `apiFetch` (injeta JWT) nos 4 pontos restantes:
-- `src/components/UGCStudio.tsx` (~L234) — geração de vídeo HeyGen
-- `src/components/HeygenDrawer.tsx` (~L188) — geração de vídeo HeyGen
-- `src/components/PhotoAvatarUpload.tsx` (~L50) — polling de status do treinamento
-- `src/components/BatchMatrix.tsx` (~L193) — polling de status de batch
+## 1. Aplicar cooldowns faltantes
+- `src/components/UrlExtractor.tsx`: envolver chamada de `/api/public/extract-url` com `tryCooldown("extract-url", COOLDOWN.extractUrl)`; mostrar toast quando bloqueado.
+- `src/components/BatchMatrix.tsx` (e outros call-sites de tradução): envolver `/api/public/translate-script` com `tryCooldown("translate", COOLDOWN.translate)`.
 
-## 2. Sincronização Cloud Completa
-Em `src/lib/cloud-sync.ts`:
-- Implementar `fetchBatches()` e adicionar ao `syncOnLogin`
-- Implementar `pushDeleteBatch(id)`, `pushDeleteVideo(id)`, `pushDeleteTranslations(briefingId)`
+## 2. Sincronização de métricas na cloud
+- Criar tabela `metrics` (migration): `id uuid pk`, `user_id uuid not null`, `briefing_id uuid`, `script_hash text`, `data jsonb`, `updated_at timestamptz`. RLS owner-scoped (select/insert/update/delete próprios).
+- Habilitar realtime + REPLICA IDENTITY FULL.
+- Em `src/hooks/use-real-metrics.ts`: ler/escrever no Supabase além do localStorage (cache local mantido); push em mudanças, hidratar no `syncOnLogin`.
+- Adicionar `fetchMetrics()` em `src/lib/cloud-sync.ts` e incluir no fluxo de login + realtime hook.
 
-Em `src/lib/batch-storage.ts`, `src/lib/video-storage.ts`, `src/lib/translation-storage.ts`:
-- Disparar as funções de deletion na cloud quando o usuário remover localmente
+## 3. Limpeza de avatares antigos no Storage
+- Em `src/components/ProfileDialog.tsx`, no upload novo:
+  1. Listar arquivos em `${user.id}/` no bucket `avatars`.
+  2. Após upload bem-sucedido, deletar todos os arquivos cujo path ≠ novo path.
+- Best-effort (erros de cleanup não bloqueiam o save).
 
-## 3. Profiles no Header
-Em `src/hooks/use-auth.tsx`:
-- Buscar `profiles` (full_name, avatar_url) após login e expor no contexto
+## 4. Trim em `full_name` vindo do auth metadata
+- Atualizar a função `public.handle_new_user()` (migration): aplicar `btrim(...)` em `full_name` e `avatar_url` antes do insert; converter strings vazias em NULL via `NULLIF(btrim(...), '')`.
 
-Em `src/routes/index.tsx` (header):
-- Mostrar avatar + nome do usuário logado (com fallback para email)
+## 5. UI de gestão de admins
+- Em `src/routes/admin.tsx`: adicionar botão "Promover/Remover admin" por usuário.
+- Criar RPC `admin_set_role(_target uuid, _role app_role, _grant boolean)` com SECURITY DEFINER que valida `has_role(auth.uid(), 'admin')`, faz insert/delete em `user_roles`. Bloquear self-demote (`_target <> auth.uid()`).
+- Estender `admin_list_users()` para retornar `is_admin boolean` (subquery em `user_roles`).
+- Atualizar tipo `AdminUserRow` no front e renderizar badge + botão.
 
-## 4. Validação Final
-- `npx tsc --noEmit` para garantir build limpo
-- `rg` final para confirmar zero `fetch("/api/public/...` fora de `apiFetch`
-
-## Resultado Esperado
-- Geração de vídeos funciona (sem 401)
-- Polling de batches e photo-avatar funciona (sem 401)
-- Batches sincronizam entre dispositivos
-- Deletes locais propagam pra cloud
-- Header mostra identidade do usuário
+## Validação final
+- `npx tsc --noEmit` limpo.
+- `bunx vitest run` verde.
+- Linter Supabase sem novos warnings.

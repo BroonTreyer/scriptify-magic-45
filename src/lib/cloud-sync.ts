@@ -443,6 +443,58 @@ export async function pushDeleteTranslations(sessionKey: string): Promise<void> 
   }
 }
 
+/* ───────── METRICS ───────── */
+
+export type MetricSnapshot = {
+  scripts: number;
+  videos: number;
+  languages: number;
+};
+
+const METRICS_AGGREGATE_HASH = "__aggregate__";
+
+export async function pushMetricsSnapshot(snap: MetricSnapshot): Promise<void> {
+  const uid = await getUserId();
+  if (!uid) return;
+  try {
+    await supabase.from("metrics").upsert(
+      {
+        user_id: uid,
+        briefing_id: null,
+        script_hash: METRICS_AGGREGATE_HASH,
+        data: snap as unknown as Record<string, unknown>,
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "user_id,briefing_id,script_hash" },
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function fetchMetricsSnapshot(): Promise<MetricSnapshot | null> {
+  const uid = await getUserId();
+  if (!uid) return null;
+  try {
+    const { data } = await supabase
+      .from("metrics")
+      .select("data")
+      .eq("user_id", uid)
+      .eq("script_hash", METRICS_AGGREGATE_HASH)
+      .maybeSingle();
+    if (!data) return null;
+    const d = data.data as unknown as Partial<MetricSnapshot> | null;
+    if (!d) return null;
+    return {
+      scripts: Number(d.scripts ?? 0),
+      videos: Number(d.videos ?? 0),
+      languages: Number(d.languages ?? 1),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /* ───────── HYDRATION + MIGRATION ───────── */
 
 /**

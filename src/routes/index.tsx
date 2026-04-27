@@ -623,6 +623,12 @@ function CriativoOS() {
     if (!src) throw new Error("Script não encontrado.");
     const langDef = LANGUAGES.find((l) => l.code === lang);
     if (!langDef) throw new Error("Idioma inválido.");
+    const cd = tryCooldown(`translate:${hashScript(src)}:${lang}`, COOLDOWN.translate);
+    if (cd !== true) {
+      throw new Error(
+        `Aguarde ${Math.ceil(cd / 1000)}s antes de traduzir novamente.`,
+      );
+    }
     const res = await apiFetch("/api/public/translate-script", {
       method: "POST",
       headers: { "content-type": "application/json" },

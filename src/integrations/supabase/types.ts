@@ -151,6 +151,36 @@ export type Database = {
         }
         Relationships: []
       }
+      metrics: {
+        Row: {
+          briefing_id: string | null
+          created_at: string
+          data: Json
+          id: string
+          script_hash: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          briefing_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          script_hash?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          briefing_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          script_hash?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -291,9 +321,18 @@ export type Database = {
           created_at: string
           email: string
           full_name: string
+          is_admin: boolean
           user_id: string
           videos_count: number
         }[]
+      }
+      admin_set_role: {
+        Args: {
+          _grant: boolean
+          _role: Database["public"]["Enums"]["app_role"]
+          _target: string
+        }
+        Returns: undefined
       }
       has_role: {
         Args: {
