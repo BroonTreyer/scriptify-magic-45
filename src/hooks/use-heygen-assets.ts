@@ -60,8 +60,8 @@ async function fetchAssets(): Promise<{ avatars: HeygenAvatar[]; voices: HeygenV
     throw new Error(friendlyAssetsError(vRes.status, vJson?.error, vRaw, "vozes"));
   }
   return {
-    avatars: (aJson.avatars ?? []) as HeygenAvatar[],
-    voices: (vJson.voices ?? []) as HeygenVoice[],
+    avatars: (aJson?.avatars ?? []) as HeygenAvatar[],
+    voices: (vJson?.voices ?? []) as HeygenVoice[],
   };
 }
 
