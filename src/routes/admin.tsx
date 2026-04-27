@@ -21,6 +21,7 @@ type AdminUserRow = {
   briefings_count: number;
   videos_count: number;
   batches_count: number;
+  is_admin: boolean;
 };
 
 function AdminPage() {
@@ -30,6 +31,43 @@ function AdminPage() {
   const [rows, setRows] = useState<AdminUserRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  const refresh = async () => {
+    const { data, error: e } = await supabase.rpc(
+      "admin_list_users" as never,
+    );
+    if (e) {
+      setError(e.message);
+      setRows([]);
+    } else {
+      setRows((data as AdminUserRow[]) ?? []);
+    }
+  };
+
+  const toggleAdmin = async (row: AdminUserRow) => {
+    if (!user) return;
+    const grant = !row.is_admin;
+    const verb = grant ? "promover" : "remover privilégios de";
+    if (!confirm(`Tem certeza que deseja ${verb} ${row.email || row.user_id}?`)) {
+      return;
+    }
+    setPendingId(row.user_id);
+    setError(null);
+    try {
+      const { error: e } = await supabase.rpc("admin_set_role" as never, {
+        _target: row.user_id,
+        _role: "admin",
+        _grant: grant,
+      } as never);
+      if (e) throw e;
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPendingId(null);
+    }
+  };
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -55,16 +93,8 @@ function AdminPage() {
           setBusy(false);
           return;
         }
-        const { data, error: e } = await supabase.rpc(
-          "admin_list_users" as never,
-        );
         if (cancel) return;
-        if (e) {
-          setError(e.message);
-          setRows([]);
-        } else {
-          setRows((data as AdminUserRow[]) ?? []);
-        }
+        await refresh();
       } catch (e) {
         if (!cancel) setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -186,6 +216,7 @@ function AdminPage() {
                   <th className="text-right px-3 py-2">Briefings</th>
                   <th className="text-right px-3 py-2">Vídeos</th>
                   <th className="text-right px-3 py-2">Batches</th>
+                  <th className="text-right px-3 py-2">Admin</th>
                 </tr>
               </thead>
               <tbody>
@@ -197,6 +228,18 @@ function AdminPage() {
                     <td className="px-3 py-2">
                       <div className="font-medium">
                         {r.full_name || "—"}
+                        {r.is_admin && (
+                          <span
+                            className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-mono uppercase tracking-widest align-middle"
+                            style={{
+                              background:
+                                "color-mix(in oklab, var(--co-red) 18%, transparent)",
+                              color: "var(--co-red)",
+                            }}
+                          >
+                            admin
+                          </span>
+                        )}
                       </div>
                       <div
                         className="text-[11px] font-mono"
@@ -220,12 +263,41 @@ function AdminPage() {
                     <td className="px-3 py-2 text-right font-mono tabular-nums">
                       {r.batches_count}
                     </td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => toggleAdmin(r)}
+                        disabled={
+                          pendingId === r.user_id ||
+                          (r.is_admin && r.user_id === user.id)
+                        }
+                        title={
+                          r.is_admin && r.user_id === user.id
+                            ? "Você não pode remover seu próprio admin"
+                            : undefined
+                        }
+                        className="px-2 py-1 rounded text-[10px] font-mono uppercase tracking-widest disabled:opacity-40"
+                        style={{
+                          border: `1px solid ${
+                            r.is_admin ? "var(--co-red)" : "var(--co-border-strong)"
+                          }`,
+                          color: r.is_admin ? "var(--co-red)" : "var(--co-text)",
+                          background: "var(--co-surface)",
+                        }}
+                      >
+                        {pendingId === r.user_id
+                          ? "..."
+                          : r.is_admin
+                            ? "Remover"
+                            : "Promover"}
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {rows.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-3 py-8 text-center text-xs font-mono opacity-60"
                     >
                       Sem usuários.
