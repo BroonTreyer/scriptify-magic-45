@@ -58,6 +58,24 @@ export function ProfileDialog({
       if (upErr) throw upErr;
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       setAvatarUrl(data.publicUrl);
+      // best-effort cleanup: remove avatares anteriores do usuário
+      try {
+        const { data: list } = await supabase.storage
+          .from("avatars")
+          .list(user.id, { limit: 100 });
+        if (list && list.length) {
+          const newName = path.split("/").pop();
+          const stale = list
+            .map((f) => f.name)
+            .filter((n) => n && n !== newName)
+            .map((n) => `${user.id}/${n}`);
+          if (stale.length) {
+            await supabase.storage.from("avatars").remove(stale);
+          }
+        }
+      } catch {
+        /* cleanup é best-effort */
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
