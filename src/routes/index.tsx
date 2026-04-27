@@ -6,7 +6,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
-import { extractJson } from "@/server/generate-scripts";
+import { extractJson, repairJson } from "@/server/generate-scripts";
 import type {
   Analise,
   BriefingInput,
@@ -770,27 +770,73 @@ function CriativoOS() {
         );
       }
 
-      let parsed: {
-        analise: Analise;
-        scripts: Script[];
-        guia_producao: GuiaProducao;
-      };
+      // Parsing em cascata: tenta limpo → repair → falha contextual.
+      // Stream pode ser cortado pelo Worker antes do message_stop mesmo com
+      // conteúdo (quase) completo; repairJson fecha aspas/brackets pendentes.
+      let parsed:
+        | {
+            analise?: Partial<Analise>;
+            scripts?: Partial<Script>[];
+            guia_producao?: Partial<GuiaProducao>;
+          }
+        | null = null;
+
       try {
         parsed = JSON.parse(extractJson(fullText));
       } catch {
-        // Se o stream foi cortado antes do message_stop E o JSON não fechou,
-        // aí sim avisamos. Caso contrário (JSON válido), seguimos em frente.
-        if (!sawMessageStop) {
-          throw new Error(
-            "A conexão com o Claude foi interrompida antes do fim da resposta. Tente novamente.",
+        /* tenta nível 2 */
+      }
+
+      if (!parsed) {
+        try {
+          parsed = JSON.parse(repairJson(fullText));
+          console.warn(
+            "[generate-scripts] usado repairJson — stream truncado mas recuperado",
           );
+        } catch {
+          /* cai pra erro contextual */
         }
-        throw new Error("Claude retornou JSON inválido. Tente novamente.");
+      }
+
+      if (!parsed) {
+        throw new Error(
+          "Resposta do Claude veio incompleta. Tente reduzir o número de scripts (ex: 5) e gerar de novo.",
+        );
       }
 
       const a = (parsed.analise ?? {}) as Partial<Analise>;
       const g = (parsed.guia_producao ?? {}) as Partial<GuiaProducao>;
       const rawScripts = Array.isArray(parsed.scripts) ? parsed.scripts : [];
+
+      // Filtra scripts truncados: precisam ter os 5 campos de copy preenchidos.
+      const validScripts: Script[] = rawScripts
+        .filter(
+          (s): s is Script =>
+            !!s &&
+            typeof s === "object" &&
+            typeof s.hook === "string" &&
+            s.hook.length > 0 &&
+            typeof s.agitacao === "string" &&
+            s.agitacao.length > 0 &&
+            typeof s.virada === "string" &&
+            s.virada.length > 0 &&
+            typeof s.prova === "string" &&
+            s.prova.length > 0 &&
+            typeof s.cta === "string" &&
+            s.cta.length > 0,
+        );
+
+      if (validScripts.length === 0) {
+        throw new Error(
+          "Claude não retornou nenhum script completo. Tente novamente.",
+        );
+      }
+
+      if (validScripts.length < rawScripts.length) {
+        toast.warning(
+          `Recebemos ${validScripts.length} de ${rawScripts.length} scripts (alguns vieram cortados).`,
+        );
+      }
 
       const filledAnalise: Analise = {
         momento_de_vida: a.momento_de_vida ?? "",
@@ -807,18 +853,14 @@ function CriativoOS() {
         checklist: Array.isArray(g.checklist) ? g.checklist : [],
       };
 
-      if (rawScripts.length === 0) {
-        throw new Error("Claude não retornou nenhum script. Tente novamente.");
-      }
-
       setAnalise(filledAnalise);
-      setScripts(rawScripts);
+      setScripts(validScripts);
       setGuiaProducao(filledGuia);
       setStep("analise");
 
       const result: GenerateResult = {
         analise: filledAnalise,
-        scripts: rawScripts,
+        scripts: validScripts,
         guiaProducao: filledGuia,
       };
       try {
@@ -827,10 +869,7 @@ function CriativoOS() {
         /* ignore storage errors */
       }
 
-      const partial =
-        !a.momento_de_vida ||
-        !g.perfil_avatar ||
-        rawScripts.some((s) => !s?.hook || !s?.cta);
+      const partial = !a.momento_de_vida || !g.perfil_avatar;
       if (partial) {
         setError(
           "Resposta parcial do Claude — alguns campos vieram vazios. Considere gerar de novo.",

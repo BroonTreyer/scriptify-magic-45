@@ -1,44 +1,90 @@
+## Causa raiz
 
-## Bug 1 — Loop infinito de toast "Atualizado em outro dispositivo: metrics"
+O erro "A conexão com o Claude foi interrompida antes do fim da resposta" dispara quando:
 
-**Causa:** `metrics` está na lista `TABLES` do `useRealtimeSync`. Cada push do próprio dispositivo (feito pelo `use-real-metrics`) volta como evento realtime → toast → `syncOnLogin` → `dispatchEvent("criativo-os:sync")` → `use-real-metrics` reconta → push → loop.
+1. O stream do Claude **chega completo ou quase completo**, mas
+2. `extractJson()` corta no último `}` — se o último `}` está num campo de meio do JSON (porque o final ficou truncado num campo string), o resultado é um JSON malformado, e
+3. `JSON.parse` quebra → como `sawMessageStop` é `false` (Cloudflare Worker às vezes encerra o body antes do evento final), o código dispara o erro de "interrompida".
 
-**Correções em `src/hooks/use-realtime-sync.ts`:**
-1. **Remover `"metrics"` da lista `TABLES`** — métricas são derivadas do localStorage, não precisam de notificação realtime nem rehidratação cruzada (já hidratam do cloud no mount via `fetchMetricsSnapshot`).
-2. **Aumentar `suppressUntil` de 4s para 8s** — `syncOnLogin` faz N chamadas em paralelo e às vezes resolve depois dos 4s, causando o primeiro toast indevido.
-3. **Não tostar tabelas que não são "user-facing"** — manter whitelist de tabelas que merecem toast: `briefings`, `videos`, `batches`, `translations`. `custom_avatars` e `custom_voices` ficam silenciosos (sincronizam mas sem toast) pra reduzir ruído.
+Já existe `repairJson()` em `src/server/generate-scripts.ts` exatamente pra esse caso (fecha aspas e brackets abertos), mas o frontend **nunca o usa**. Vamos plugá-lo.
 
-**Em `src/hooks/use-real-metrics.ts`:**
-4. **Não fazer push se o snapshot não mudou** — comparar com último valor pushado em ref; só chamar `pushMetricsSnapshot` quando `scripts/videos/languages` realmente mudaram. Isso quebra qualquer eco residual.
+## Mudanças
 
----
+### 1. `src/routes/index.tsx` — cascata de parsing (linhas ~773–812)
 
-## Bug 2 — "Failed to execute 'json' on 'Response': Unexpected token 'u', 'upstream r'..."
+Substituir o bloco `try { parsed = JSON.parse(extractJson(fullText)); } catch { ... }` por uma cascata de 3 níveis:
 
-**Causa:** Servidor está respondendo `upstream request timeout` em texto plano (o Firecrawl ou o AI Gateway travou). Cliente faz `res.json()` cego e quebra com mensagem confusa.
+```ts
+import { extractJson, repairJson } from "@/server/generate-scripts";
 
-**Correções em `src/routes/api/public/extract-url.ts`:**
-1. **Adicionar `AbortController` com timeout** nas duas chamadas externas:
-   - Firecrawl: 25s (scrape pode ser lento)
-   - AI Gateway: 30s
-   - Em timeout, retornar JSON estruturado com 504 e mensagem clara ("A página demorou demais pra responder. Tente novamente ou use uma URL mais simples.").
-2. **try/catch ao redor de `fetch`** — erros de rede também viram JSON, nunca string solta.
+// ...
 
-**Correções em `src/components/UrlExtractor.tsx`:**
-3. **Parse defensivo da response** — ler `res.text()` primeiro e tentar `JSON.parse`; se falhar, mostrar uma mensagem amigável ("O servidor demorou demais pra responder. Tente novamente em instantes.") em vez do erro técnico do `Response.json()`.
-4. **Mensagens de erro contextualizadas** por status HTTP (402 → créditos, 422 → conteúdo insuficiente, 504/502 → timeout, 429 → rate limit).
+let parsed: { analise?: Analise; scripts?: Script[]; guia_producao?: GuiaProducao } | null = null;
 
----
+// Nível 1: parse limpo
+try {
+  parsed = JSON.parse(extractJson(fullText));
+} catch { /* tenta nível 2 */ }
 
-## Validação
+// Nível 2: repair (fecha aspas/brackets pendentes)
+if (!parsed) {
+  try {
+    parsed = JSON.parse(repairJson(fullText));
+    console.warn("[generate-scripts] usado repairJson — stream truncado mas recuperado");
+  } catch { /* tenta nível 3 */ }
+}
 
-- `npx tsc --noEmit` — typecheck limpo.
-- `bunx vitest run` — testes existentes continuam verdes.
-- Smoke manual no preview: abrir o app → confirmar que o toast "Atualizado em outro dispositivo: metrics" não aparece mais; tentar `extract-url` com uma URL lenta/inválida e ver mensagem amigável em vez do erro técnico.
+// Nível 3: nada deu → erro contextual
+if (!parsed) {
+  if (!receivedAnyContent) {
+    throw new Error("A conexão com o Claude foi interrompida antes de qualquer resposta. Tente novamente.");
+  }
+  throw new Error(
+    "Resposta do Claude veio incompleta. Tente reduzir o número de scripts (ex: 5) e gerar de novo.",
+  );
+}
+```
 
-## Arquivos tocados
+Depois, **filtrar scripts válidos** (descartar entradas truncadas com campos faltando):
 
-- `src/hooks/use-realtime-sync.ts` — remove metrics, whitelist de toasts, suppress 8s
-- `src/hooks/use-real-metrics.ts` — guard de "snapshot mudou?" antes de pushar
-- `src/routes/api/public/extract-url.ts` — timeouts + try/catch JSON-safe
-- `src/components/UrlExtractor.tsx` — parse defensivo + mensagens por status
+```ts
+const rawScripts = Array.isArray(parsed.scripts) ? parsed.scripts : [];
+const validScripts = rawScripts.filter(
+  (s): s is Script =>
+    !!s && typeof s === "object" &&
+    typeof s.hook === "string" && s.hook.length > 0 &&
+    typeof s.agitacao === "string" && s.agitacao.length > 0 &&
+    typeof s.virada === "string" && s.virada.length > 0 &&
+    typeof s.prova === "string" && s.prova.length > 0 &&
+    typeof s.cta === "string" && s.cta.length > 0,
+);
+
+if (validScripts.length === 0) {
+  throw new Error("Claude não retornou nenhum script completo. Tente novamente.");
+}
+
+if (validScripts.length < rawScripts.length) {
+  toast.warning(
+    `Recebemos ${validScripts.length} de ${rawScripts.length} scripts (alguns vieram cortados).`,
+  );
+}
+```
+
+E usar `validScripts` no lugar de `rawScripts` em `setScripts(...)` e no resto do fluxo.
+
+### 2. Validação
+
+- `npx tsc --noEmit` — confirmar zero erros.
+- `bunx vitest run` — confirmar 8/8 testes passando (mudanças não tocam testes existentes).
+
+## O que NÃO vou mudar
+
+- **Não toco no backend** (`src/routes/api/public/generate-scripts.ts`) — o stream já está correto, o problema é puramente de parsing tolerante no cliente.
+- **Não mudo `extractJson` / `repairJson`** — já estão prontos e cobertos pela arquitetura, só faltava conectar.
+- **Não reduzo `max_tokens`** nem o número padrão de scripts — a cascata absorve o caso de truncamento sem precisar limitar o produto.
+
+## Resultado esperado
+
+- Streams completos: parsed direto pelo nível 1 (caminho feliz, igual hoje).
+- Streams cortados perto do fim: nível 2 recupera, usuário recebe scripts (com toast de aviso se faltou algum).
+- Streams cortados muito cedo: erro claro pedindo pra reduzir nº de scripts em vez do genérico atual.
