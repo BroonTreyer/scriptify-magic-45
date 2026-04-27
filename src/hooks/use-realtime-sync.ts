@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { syncOnLogin } from "@/lib/cloud-sync";
 import { toast } from "sonner";
 
+// Tabelas observadas via realtime. `metrics` foi removida de propósito:
+// é gravada pelo próprio dispositivo via debounce em useRealMetrics e
+// causaria loop de toast (push → realtime → toast → recount → push…).
 const TABLES = [
   "briefings",
   "videos",
@@ -10,8 +13,16 @@ const TABLES = [
   "translations",
   "custom_avatars",
   "custom_voices",
-  "metrics",
 ] as const;
+
+// Apenas estas tabelas merecem toast "Atualizado em outro dispositivo".
+// `custom_avatars`/`custom_voices` sincronizam silenciosamente.
+const NOTIFY_TABLES = new Set<string>([
+  "briefings",
+  "videos",
+  "batches",
+  "translations",
+]);
 
 /**
  * Assina mudanças nas tabelas do app filtradas por user_id e dispara
@@ -27,7 +38,8 @@ export function useRealtimeSync(userId: string | null | undefined) {
     let firstLoad = true;
     // Ignore eventos disparados durante a janela inicial de hidratação,
     // para não tostar todo briefing/video que o syncOnLogin reescreve.
-    let suppressUntil = Date.now() + 4000;
+    // 8s cobre o caso de syncOnLogin demorar (várias chamadas em paralelo).
+    const suppressUntil = Date.now() + 8000;
     const dirtyTables = new Set<string>();
 
     const trigger = (table: string) => {
@@ -39,9 +51,12 @@ export function useRealtimeSync(userId: string | null | undefined) {
           if (typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent("criativo-os:sync"));
           }
-          if (!firstLoad && dirtyTables.size > 0) {
+          const notify = Array.from(dirtyTables).filter((t) =>
+            NOTIFY_TABLES.has(t),
+          );
+          if (!firstLoad && notify.length > 0) {
             toast.info("Atualizado em outro dispositivo", {
-              description: Array.from(dirtyTables).join(", "),
+              description: notify.join(", "),
               duration: 3000,
             });
           }

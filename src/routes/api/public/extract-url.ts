@@ -60,18 +60,36 @@ export const Route = createFileRoute("/api/public/extract-url")({
         }
 
         // 1) Scrape com Firecrawl
-        const fcRes = await fetch("https://api.firecrawl.dev/v2/scrape", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
-          },
-          body: JSON.stringify({
-            url,
-            formats: ["markdown"],
-            onlyMainContent: true,
-          }),
-        });
+        let fcRes: Response;
+        try {
+          fcRes = await fetchWithTimeout(
+            "https://api.firecrawl.dev/v2/scrape",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+              },
+              body: JSON.stringify({
+                url,
+                formats: ["markdown"],
+                onlyMainContent: true,
+              }),
+            },
+            25_000,
+          );
+        } catch (e) {
+          const isAbort = (e as Error)?.name === "AbortError";
+          console.error("Firecrawl fetch failed", e);
+          return json(
+            {
+              error: isAbort
+                ? "A página demorou demais pra responder. Tente novamente ou use uma URL mais simples."
+                : "Falha ao contatar o serviço de scraping.",
+            },
+            isAbort ? 504 : 502,
+          );
+        }
 
         if (!fcRes.ok) {
           const t = await fcRes.text().catch(() => "");
@@ -88,7 +106,12 @@ export const Route = createFileRoute("/api/public/extract-url")({
           );
         }
 
-        const fcData = (await fcRes.json()) as FirecrawlScrapeResp;
+        let fcData: FirecrawlScrapeResp;
+        try {
+          fcData = (await fcRes.json()) as FirecrawlScrapeResp;
+        } catch {
+          return json({ error: "Resposta inválida do scraper." }, 502);
+        }
         const markdown =
           fcData.data?.markdown ?? fcData.markdown ?? "";
         const meta = fcData.data?.metadata ?? fcData.metadata ?? {};
@@ -105,15 +128,17 @@ export const Route = createFileRoute("/api/public/extract-url")({
           "Você é um copywriter sênior especializado em ads. Dado o conteúdo de uma landing page, extrai um briefing acionável para criação de scripts publicitários. Responde sempre em português do Brasil. Seja específico, evite genéricos.";
         const userPrompt = `URL: ${url}\nTÍTULO: ${meta.title ?? ""}\nDESCRIÇÃO: ${meta.description ?? ""}\n\nCONTEÚDO DA PÁGINA (markdown):\n${truncated}\n\nExtraia o briefing usando a tool extract_briefing.`;
 
-        const aiRes = await fetch(
-          "https://ai.gateway.lovable.dev/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
+        let aiRes: Response;
+        try {
+          aiRes = await fetchWithTimeout(
+            "https://ai.gateway.lovable.dev/v1/chat/completions",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
               model: "google/gemini-3-flash-preview",
               messages: [
                 { role: "system", content: sysPrompt },
@@ -178,9 +203,22 @@ export const Route = createFileRoute("/api/public/extract-url")({
                 type: "function",
                 function: { name: "extract_briefing" },
               },
-            }),
-          },
-        );
+              }),
+            },
+            30_000,
+          );
+        } catch (e) {
+          const isAbort = (e as Error)?.name === "AbortError";
+          console.error("AI gateway fetch failed", e);
+          return json(
+            {
+              error: isAbort
+                ? "A IA demorou demais pra responder. Tente novamente."
+                : "Falha ao contatar a IA.",
+            },
+            isAbort ? 504 : 502,
+          );
+        }
 
         if (!aiRes.ok) {
           const t = await aiRes.text().catch(() => "");
@@ -206,7 +244,7 @@ export const Route = createFileRoute("/api/public/extract-url")({
           );
         }
 
-        const aiJson = (await aiRes.json()) as {
+        let aiJson: {
           choices?: Array<{
             message?: {
               tool_calls?: Array<{
@@ -215,6 +253,11 @@ export const Route = createFileRoute("/api/public/extract-url")({
             };
           }>;
         };
+        try {
+          aiJson = await aiRes.json();
+        } catch {
+          return json({ error: "Resposta inválida da IA." }, 502);
+        }
         const toolCall = aiJson.choices?.[0]?.message?.tool_calls?.[0];
         const argsStr = toolCall?.function?.arguments;
         if (!argsStr) {
@@ -251,4 +294,18 @@ function json(body: unknown, status = 200) {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: ctl.signal });
+  } finally {
+    clearTimeout(t);
+  }
 }
