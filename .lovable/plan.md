@@ -1,90 +1,59 @@
-## Causa raiz
+## Objetivo
+Eliminar o aviso infinito de “Atualizado em outro dispositivo” e tornar o carregamento de avatares/vozes do HeyGen recuperável quando houver timeout.
 
-O erro "A conexão com o Claude foi interrompida antes do fim da resposta" dispara quando:
+## O que vou corrigir
+1. Interromper o loop de sync em tempo real.
+2. Evitar que a hidratação do backend gere eventos de volta para o próprio cliente.
+3. Melhorar o modal HeyGen para não ficar preso em erro sem saída.
+4. Validar que os ajustes não reintroduzem loops ou regressões.
 
-1. O stream do Claude **chega completo ou quase completo**, mas
-2. `extractJson()` corta no último `}` — se o último `}` está num campo de meio do JSON (porque o final ficou truncado num campo string), o resultado é um JSON malformado, e
-3. `JSON.parse` quebra → como `sawMessageStop` é `false` (Cloudflare Worker às vezes encerra o body antes do evento final), o código dispara o erro de "interrompida".
+## Diagnóstico
+O loop principal está na hidratação do cache local:
+- `syncOnLogin()` baixa dados do backend.
+- Durante essa hidratação, ele chama `saveTranslations()` e `saveVideos()`.
+- Essas funções gravam no `localStorage`, mas também fazem `push` para o backend.
+- O `push` gera eventos realtime na tabela `translations`/`videos`.
+- `useRealtimeSync()` recebe esses eventos, roda `syncOnLogin()` de novo e volta a exibir toast.
 
-Já existe `repairJson()` em `src/server/generate-scripts.ts` exatamente pra esse caso (fecha aspas e brackets abertos), mas o frontend **nunca o usa**. Vamos plugá-lo.
+O erro do HeyGen é separado:
+- `useHeygenAssets()` já trata timeout com mensagem amigável.
+- Porém os componentes (`HeygenDrawer`, `UGCStudio`, `BatchMatrix`) não expõem um caminho claro de retry usando o `refresh()` já existente no hook.
 
-## Mudanças
+## Implementação
+### 1) Parar o eco de realtime na hidratação
+- Ajustar os storages para permitir gravação local sem `push` para o backend durante hidratação.
+- Aplicar isso em:
+  - `src/lib/translation-storage.ts`
+  - `src/lib/video-storage.ts`
+- Atualizar `syncOnLogin()` em `src/lib/cloud-sync.ts` para usar modo “cache-only” ao reidratar dados vindos do backend.
 
-### 1. `src/routes/index.tsx` — cascata de parsing (linhas ~773–812)
+### 2) Reduzir duplicação de toasts de sync
+- Fortalecer `useRealtimeSync()` para ignorar ecos residuais do próprio ciclo de sincronização.
+- Deduplicar notificações iguais em janela curta, especialmente para `translations`, que pode gerar muitos eventos em lote.
+- Manter sync silencioso para tabelas que não precisam aviso.
 
-Substituir o bloco `try { parsed = JSON.parse(extractJson(fullText)); } catch { ... }` por uma cascata de 3 níveis:
+### 3) Dar recuperação real ao erro do HeyGen
+- Passar `refresh` retornado por `useHeygenAssets()` para a UI.
+- Adicionar ação explícita de “Tentar novamente” nos componentes que usam esses assets:
+  - `src/components/HeygenDrawer.tsx`
+  - `src/components/UGCStudio.tsx`
+  - `src/components/BatchMatrix.tsx`
+- Se houver cache válido anterior, preservar os dados em vez de zerar a experiência desnecessariamente.
 
-```ts
-import { extractJson, repairJson } from "@/server/generate-scripts";
+### 4) Validação
+- Verificar que abrir o modal do HeyGen não dispara mais toasts de sync em cascata.
+- Verificar que eventos em `translations` não entram mais em loop local → backend → realtime → local.
+- Rodar checagem de tipos/testes após a implementação.
 
-// ...
+## Detalhes técnicos
+```text
+Antes:
+backend change -> realtime -> syncOnLogin -> saveTranslations/saveVideos
+-> push backend -> realtime -> syncOnLogin -> toast infinito
 
-let parsed: { analise?: Analise; scripts?: Script[]; guia_producao?: GuiaProducao } | null = null;
-
-// Nível 1: parse limpo
-try {
-  parsed = JSON.parse(extractJson(fullText));
-} catch { /* tenta nível 2 */ }
-
-// Nível 2: repair (fecha aspas/brackets pendentes)
-if (!parsed) {
-  try {
-    parsed = JSON.parse(repairJson(fullText));
-    console.warn("[generate-scripts] usado repairJson — stream truncado mas recuperado");
-  } catch { /* tenta nível 3 */ }
-}
-
-// Nível 3: nada deu → erro contextual
-if (!parsed) {
-  if (!receivedAnyContent) {
-    throw new Error("A conexão com o Claude foi interrompida antes de qualquer resposta. Tente novamente.");
-  }
-  throw new Error(
-    "Resposta do Claude veio incompleta. Tente reduzir o número de scripts (ex: 5) e gerar de novo.",
-  );
-}
+Depois:
+backend change -> realtime -> syncOnLogin -> write cache only
+-> sem push de volta -> sem loop
 ```
 
-Depois, **filtrar scripts válidos** (descartar entradas truncadas com campos faltando):
-
-```ts
-const rawScripts = Array.isArray(parsed.scripts) ? parsed.scripts : [];
-const validScripts = rawScripts.filter(
-  (s): s is Script =>
-    !!s && typeof s === "object" &&
-    typeof s.hook === "string" && s.hook.length > 0 &&
-    typeof s.agitacao === "string" && s.agitacao.length > 0 &&
-    typeof s.virada === "string" && s.virada.length > 0 &&
-    typeof s.prova === "string" && s.prova.length > 0 &&
-    typeof s.cta === "string" && s.cta.length > 0,
-);
-
-if (validScripts.length === 0) {
-  throw new Error("Claude não retornou nenhum script completo. Tente novamente.");
-}
-
-if (validScripts.length < rawScripts.length) {
-  toast.warning(
-    `Recebemos ${validScripts.length} de ${rawScripts.length} scripts (alguns vieram cortados).`,
-  );
-}
-```
-
-E usar `validScripts` no lugar de `rawScripts` em `setScripts(...)` e no resto do fluxo.
-
-### 2. Validação
-
-- `npx tsc --noEmit` — confirmar zero erros.
-- `bunx vitest run` — confirmar 8/8 testes passando (mudanças não tocam testes existentes).
-
-## O que NÃO vou mudar
-
-- **Não toco no backend** (`src/routes/api/public/generate-scripts.ts`) — o stream já está correto, o problema é puramente de parsing tolerante no cliente.
-- **Não mudo `extractJson` / `repairJson`** — já estão prontos e cobertos pela arquitetura, só faltava conectar.
-- **Não reduzo `max_tokens`** nem o número padrão de scripts — a cascata absorve o caso de truncamento sem precisar limitar o produto.
-
-## Resultado esperado
-
-- Streams completos: parsed direto pelo nível 1 (caminho feliz, igual hoje).
-- Streams cortados perto do fim: nível 2 recupera, usuário recebe scripts (com toast de aviso se faltou algum).
-- Streams cortados muito cedo: erro claro pedindo pra reduzir nº de scripts em vez do genérico atual.
+Também vou aproveitar o `refresh()` já existente no hook de HeyGen para transformar o erro de timeout em estado recuperável, sem exigir recarregar a página inteira.

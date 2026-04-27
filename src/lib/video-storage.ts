@@ -94,7 +94,9 @@ export function loadVideos(sessionKey: string): Record<number, GeneratedVideo> {
 export function saveVideos(
   sessionKey: string,
   videos: Record<number, GeneratedVideo>,
+  options: { pushCloud?: boolean } = {},
 ) {
+  const pushCloud = options.pushCloud !== false;
   const ls = safeLS();
   if (!ls) return;
   const payload = JSON.stringify(videos);
@@ -120,11 +122,13 @@ export function saveVideos(
       /* give up silently */
     }
   }
-  // mirror each video entry to cloud
-  for (const idxStr of Object.keys(videos)) {
-    const idx = Number(idxStr);
-    const v = videos[idx];
-    if (v) void pushVideo(sessionKey, idx, v);
+  // mirror each video entry to cloud (skipped during cloud→local hydration)
+  if (pushCloud) {
+    for (const idxStr of Object.keys(videos)) {
+      const idx = Number(idxStr);
+      const v = videos[idx];
+      if (v) void pushVideo(sessionKey, idx, v);
+    }
   }
 }
 
