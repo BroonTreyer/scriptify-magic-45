@@ -770,12 +770,6 @@ function CriativoOS() {
         );
       }
 
-      if (!sawMessageStop) {
-        throw new Error(
-          "A conexão com o Claude foi interrompida antes do fim da resposta. Tente novamente.",
-        );
-      }
-
       let parsed: {
         analise: Analise;
         scripts: Script[];
@@ -784,6 +778,13 @@ function CriativoOS() {
       try {
         parsed = JSON.parse(extractJson(fullText));
       } catch {
+        // Se o stream foi cortado antes do message_stop E o JSON não fechou,
+        // aí sim avisamos. Caso contrário (JSON válido), seguimos em frente.
+        if (!sawMessageStop) {
+          throw new Error(
+            "A conexão com o Claude foi interrompida antes do fim da resposta. Tente novamente.",
+          );
+        }
         throw new Error("Claude retornou JSON inválido. Tente novamente.");
       }
 
