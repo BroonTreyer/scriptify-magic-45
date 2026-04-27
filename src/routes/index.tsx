@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { apiFetch } from "@/lib/api-fetch";
 import { tryCooldown, COOLDOWN } from "@/lib/client-cooldown";
 import { toast } from "sonner";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
@@ -587,6 +587,7 @@ function CriativoOS() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
   const [ugcOpen, setUgcOpen] = useState(false);
+  const generatingRef = useRef(false);
 
   const sessionKey = useMemo(
     () => (scripts.length ? hashScripts(scripts) : null),
@@ -669,10 +670,12 @@ function CriativoOS() {
   };
 
   const gerar = async () => {
+    if (generatingRef.current || loading) return;
     if (!form.produto || !form.publico || !form.dor || !form.transformacao) {
       setError("Preencha os campos obrigatórios marcados com *");
       return;
     }
+    generatingRef.current = true;
     setError(null);
     setLoading(true);
     setLoadingMsg(LOADING_MSGS[0]);
@@ -807,34 +810,46 @@ function CriativoOS() {
       const a = (parsed.analise ?? {}) as Partial<Analise>;
       const g = (parsed.guia_producao ?? {}) as Partial<GuiaProducao>;
       const rawScripts = Array.isArray(parsed.scripts) ? parsed.scripts : [];
-
-      // Filtra scripts truncados: precisam ter os 5 campos de copy preenchidos.
-      const validScripts: Script[] = rawScripts
-        .filter(
-          (s): s is Script =>
-            !!s &&
-            typeof s === "object" &&
-            typeof s.hook === "string" &&
-            s.hook.length > 0 &&
-            typeof s.agitacao === "string" &&
-            s.agitacao.length > 0 &&
-            typeof s.virada === "string" &&
-            s.virada.length > 0 &&
-            typeof s.prova === "string" &&
-            s.prova.length > 0 &&
-            typeof s.cta === "string" &&
-            s.cta.length > 0,
+      const normalizedScripts: Script[] = rawScripts
+        .filter((s): s is Partial<Script> => !!s && typeof s === "object")
+        .map((s, index) => ({
+          angulo: typeof s.angulo === "string" ? s.angulo : `Script ${index + 1}`,
+          nivel_consciencia:
+            typeof s.nivel_consciencia === "string" ? s.nivel_consciencia : "",
+          duracao: typeof s.duracao === "string" ? s.duracao : form.duracao,
+          hook: typeof s.hook === "string" ? s.hook : "",
+          agitacao: typeof s.agitacao === "string" ? s.agitacao : "",
+          virada: typeof s.virada === "string" ? s.virada : "",
+          prova: typeof s.prova === "string" ? s.prova : "",
+          cta: typeof s.cta === "string" ? s.cta : "",
+          estrategia: typeof s.estrategia === "string" ? s.estrategia : "",
+        }))
+        .filter((s) =>
+          [s.hook, s.agitacao, s.virada, s.prova, s.cta, s.estrategia].some(
+            (field) => field.trim().length > 0,
+          ),
         );
 
-      if (validScripts.length === 0) {
+      if (normalizedScripts.length === 0) {
         throw new Error(
-          "Claude não retornou nenhum script completo. Tente novamente.",
+          "Claude retornou conteúdo parcial demais para montar scripts. Tente novamente ou gere menos scripts.",
         );
       }
 
-      if (validScripts.length < rawScripts.length) {
+      const completeScripts = normalizedScripts.filter(
+        (s) =>
+          s.hook.trim().length > 0 &&
+          s.agitacao.trim().length > 0 &&
+          s.virada.trim().length > 0 &&
+          s.prova.trim().length > 0 &&
+          s.cta.trim().length > 0,
+      );
+
+      if (completeScripts.length < normalizedScripts.length) {
         toast.warning(
-          `Recebemos ${validScripts.length} de ${rawScripts.length} scripts (alguns vieram cortados).`,
+          completeScripts.length > 0
+            ? `Recebemos ${normalizedScripts.length} scripts; alguns vieram parciais, mas foram mantidos.`
+            : `Recebemos ${normalizedScripts.length} scripts parciais e mantivemos o conteúdo recuperado.`,
         );
       }
 
@@ -854,13 +869,13 @@ function CriativoOS() {
       };
 
       setAnalise(filledAnalise);
-      setScripts(validScripts);
+      setScripts(normalizedScripts);
       setGuiaProducao(filledGuia);
       setStep("analise");
 
       const result: GenerateResult = {
         analise: filledAnalise,
-        scripts: validScripts,
+        scripts: normalizedScripts,
         guiaProducao: filledGuia,
       };
       try {
@@ -881,6 +896,7 @@ function CriativoOS() {
     } finally {
       clearInterval(msgInterval);
       setLoading(false);
+      generatingRef.current = false;
     }
   };
 

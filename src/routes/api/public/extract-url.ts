@@ -59,10 +59,13 @@ export const Route = createFileRoute("/api/public/extract-url")({
           }, 400);
         }
 
-        // 1) Scrape com Firecrawl
-        let fcRes: Response;
+        // 1) Scrape com Firecrawl + fallback para leitura direta do HTML.
+        let markdown = "";
+        let meta: { title?: string; description?: string; sourceURL?: string } = {};
+        let scrapeError: string | null = null;
+
         try {
-          fcRes = await fetchWithTimeout(
+          const fcRes = await fetchWithTimeout(
             "https://api.firecrawl.dev/v2/scrape",
             {
               method: "POST",
@@ -78,46 +81,53 @@ export const Route = createFileRoute("/api/public/extract-url")({
             },
             25_000,
           );
+
+          if (!fcRes.ok) {
+            const t = await fcRes.text().catch(() => "");
+            console.error("Firecrawl error", fcRes.status, t);
+            if (fcRes.status === 402) {
+              return json(
+                { error: "Firecrawl sem créditos. Recarregue na sua conta." },
+                402,
+              );
+            }
+            scrapeError = `Falha ao raspar a página (${fcRes.status}).`;
+          } else {
+            try {
+              const fcData = (await fcRes.json()) as FirecrawlScrapeResp;
+              markdown = fcData.data?.markdown ?? fcData.markdown ?? "";
+              meta = fcData.data?.metadata ?? fcData.metadata ?? {};
+            } catch {
+              scrapeError = "Resposta inválida do scraper.";
+            }
+          }
         } catch (e) {
           const isAbort = (e as Error)?.name === "AbortError";
           console.error("Firecrawl fetch failed", e);
-          return json(
-            {
-              error: isAbort
-                ? "A página demorou demais pra responder. Tente novamente ou use uma URL mais simples."
-                : "Falha ao contatar o serviço de scraping.",
-            },
-            isAbort ? 504 : 502,
-          );
+          scrapeError = isAbort
+            ? "A página demorou demais pra responder."
+            : "Falha ao contatar o serviço de scraping.";
         }
 
-        if (!fcRes.ok) {
-          const t = await fcRes.text().catch(() => "");
-          console.error("Firecrawl error", fcRes.status, t);
-          if (fcRes.status === 402) {
-            return json(
-              { error: "Firecrawl sem créditos. Recarregue na sua conta." },
-              402,
-            );
+        if (!markdown || markdown.trim().length < 50) {
+          const fallback = await fetchReadablePage(url);
+          if (fallback.text.trim().length >= 80) {
+            markdown = fallback.text;
+            meta = {
+              title: meta.title ?? fallback.title,
+              description: meta.description ?? fallback.description,
+              sourceURL: meta.sourceURL,
+            };
+            console.warn("extract-url fallback usado", { url, scrapeError });
           }
-          return json(
-            { error: `Falha ao raspar a página (${fcRes.status}).` },
-            502,
-          );
         }
 
-        let fcData: FirecrawlScrapeResp;
-        try {
-          fcData = (await fcRes.json()) as FirecrawlScrapeResp;
-        } catch {
-          return json({ error: "Resposta inválida do scraper." }, 502);
-        }
-        const markdown =
-          fcData.data?.markdown ?? fcData.markdown ?? "";
-        const meta = fcData.data?.metadata ?? fcData.metadata ?? {};
         if (!markdown || markdown.trim().length < 50) {
           return json(
-            { error: "Página retornou conteúdo vazio ou insuficiente." },
+            {
+              error:
+                scrapeError ?? "Página retornou conteúdo vazio ou insuficiente.",
+            },
             422,
           );
         }
@@ -308,4 +318,54 @@ async function fetchWithTimeout(
   } finally {
     clearTimeout(t);
   }
+}
+
+async function fetchReadablePage(url: string): Promise<{
+  text: string;
+  title?: string;
+  description?: string;
+}> {
+  const res = await fetchWithTimeout(
+    url,
+    {
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (compatible; LovableBot/1.0; +https://lovable.dev)",
+        accept: "text/html,application/xhtml+xml",
+      },
+    },
+    20_000,
+  );
+
+  if (!res.ok) {
+    throw new Error(`Falha ao baixar HTML (${res.status}).`);
+  }
+
+  const html = await res.text();
+  const title =
+    html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]
+      ?.replace(/\s+/g, " ")
+      .trim() ?? "";
+  const description =
+    html
+      .match(
+        /<meta[^>]+(?:name=["']description["']|property=["']og:description["'])[^>]+content=["']([\s\S]*?)["'][^>]*>/i,
+      )?.[1]
+      ?.replace(/\s+/g, " ")
+      .trim() ?? "";
+  const bodyText = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return {
+    text: [title, description, bodyText].filter(Boolean).join("\n\n").slice(0, 12000),
+    title: title || undefined,
+    description: description || undefined,
+  };
 }
