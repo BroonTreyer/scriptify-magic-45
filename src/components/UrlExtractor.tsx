@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { apiFetch } from "@/lib/api-fetch";
+import { tryCooldown, COOLDOWN } from "@/lib/client-cooldown";
 import type { BriefingInput } from "@/lib/criativo-types";
 
 type Props = {
@@ -20,6 +21,11 @@ export function UrlExtractor({ onExtracted }: Props) {
   const extract = async () => {
     if (!url.trim()) {
       setError("Cole uma URL primeiro.");
+      return;
+    }
+    const cd = tryCooldown(`extract-url:${url.trim()}`, COOLDOWN.extractUrl);
+    if (cd !== true) {
+      setError(`Aguarde ${Math.ceil(cd / 1000)}s antes de extrair novamente.`);
       return;
     }
     setError(null);
