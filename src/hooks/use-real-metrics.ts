@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { listBriefings } from "@/lib/briefing-storage";
 import { LANGUAGES } from "@/lib/translation-storage";
+import {
+  fetchMetricsSnapshot,
+  pushMetricsSnapshot,
+} from "@/lib/cloud-sync";
+import { supabase } from "@/integrations/supabase/client";
 
 export type RealMetrics = {
   scripts: number;
@@ -85,14 +90,43 @@ export function useRealMetrics(): RealMetrics {
   // SSR-safe: hidrata com 0,0,1 e atualiza no client
   const [m, setM] = useState<RealMetrics>({ scripts: 0, videos: 0, languages: 1 });
   useEffect(() => {
-    setM(countMetrics());
-    // re-count on focus / storage events
-    const refresh = () => setM(countMetrics());
+    let cancelled = false;
+    let pushTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const recount = () => {
+      const local = countMetrics();
+      if (!cancelled) setM(local);
+      // debounce push pra cloud
+      if (pushTimer) clearTimeout(pushTimer);
+      pushTimer = setTimeout(() => {
+        void pushMetricsSnapshot(local);
+      }, 1500);
+    };
+
+    // 1) hidrata do cloud (se logado), depois reconta local
+    void (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          const cloud = await fetchMetricsSnapshot();
+          if (cloud && !cancelled) setM(cloud);
+        }
+      } catch {
+        /* ignore */
+      }
+      recount();
+    })();
+
+    const refresh = () => recount();
     window.addEventListener("focus", refresh);
     window.addEventListener("storage", refresh);
+    window.addEventListener("criativo-os:sync", refresh);
     return () => {
+      cancelled = true;
+      if (pushTimer) clearTimeout(pushTimer);
       window.removeEventListener("focus", refresh);
       window.removeEventListener("storage", refresh);
+      window.removeEventListener("criativo-os:sync", refresh);
     };
   }, []);
   return m;
