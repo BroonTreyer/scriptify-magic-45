@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listBriefings } from "@/lib/briefing-storage";
 import { LANGUAGES } from "@/lib/translation-storage";
 import {
@@ -89,6 +89,7 @@ function countMetrics(): RealMetrics {
 export function useRealMetrics(): RealMetrics {
   // SSR-safe: hidrata com 0,0,1 e atualiza no client
   const [m, setM] = useState<RealMetrics>({ scripts: 0, videos: 0, languages: 1 });
+  const lastPushedRef = useRef<RealMetrics | null>(null);
   useEffect(() => {
     let cancelled = false;
     let pushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -96,9 +97,17 @@ export function useRealMetrics(): RealMetrics {
     const recount = () => {
       const local = countMetrics();
       if (!cancelled) setM(local);
-      // debounce push pra cloud
+      // só pushar se realmente mudou (quebra qualquer eco residual via realtime)
+      const last = lastPushedRef.current;
+      const changed =
+        !last ||
+        last.scripts !== local.scripts ||
+        last.videos !== local.videos ||
+        last.languages !== local.languages;
+      if (!changed) return;
       if (pushTimer) clearTimeout(pushTimer);
       pushTimer = setTimeout(() => {
+        lastPushedRef.current = local;
         void pushMetricsSnapshot(local);
       }, 1500);
     };
@@ -109,7 +118,11 @@ export function useRealMetrics(): RealMetrics {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
           const cloud = await fetchMetricsSnapshot();
-          if (cloud && !cancelled) setM(cloud);
+          if (cloud && !cancelled) {
+            setM(cloud);
+            // marca como já pushado pra não reescrever o mesmo snapshot
+            lastPushedRef.current = cloud;
+          }
         }
       } catch {
         /* ignore */
