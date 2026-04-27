@@ -45,7 +45,7 @@ export function UGCStudio({
   const [transcript, setTranscript] = useState<string>("");
 
   // Heygen meta
-  const { avatars, voices, loading: loadingMeta, error: metaError } =
+  const { avatars, voices, loading: loadingMeta, error: metaError, refresh: refreshMeta } =
     useHeygenAssets(open);
   const [avatarTab, setAvatarTab] = useState<"public" | "custom">("custom");
   const [voiceTab, setVoiceTab] = useState<"public" | "custom">("custom");
@@ -294,14 +294,25 @@ export function UGCStudio({
         <div className="px-6 py-5 space-y-6">
           {(metaError || errorMsg) && (
             <div
-              className="px-4 py-3 rounded text-xs font-mono"
+              className="px-4 py-3 rounded text-xs font-mono flex items-center justify-between gap-3"
               style={{
                 background: "color-mix(in oklab, var(--co-red) 10%, transparent)",
                 border: "1px solid var(--co-red)",
                 color: "var(--co-red)",
               }}
             >
-              ⚠ {errorMsg || metaError}
+              <span>⚠ {errorMsg || metaError}</span>
+              {metaError && !errorMsg && (
+                <button
+                  type="button"
+                  onClick={() => void refreshMeta()}
+                  disabled={loadingMeta}
+                  className="shrink-0 px-3 py-1 rounded font-bold uppercase tracking-widest text-[10px] disabled:opacity-50"
+                  style={{ border: "1px solid var(--co-red)", color: "var(--co-red)" }}
+                >
+                  {loadingMeta ? "..." : "Tentar de novo"}
+                </button>
+              )}
             </div>
           )}
 

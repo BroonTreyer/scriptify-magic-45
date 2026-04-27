@@ -590,13 +590,17 @@ export async function syncOnLogin(): Promise<void> {
       }
     }
 
-    // videos & translations: hidrata por sessionKey de cada briefing
+    // videos & translations: hidrata por sessionKey de cada briefing.
+    // pushCloud=false evita o loop: backend → realtime → syncOnLogin →
+    // saveVideos/saveTranslations → push → realtime → ∞.
     for (const b of cloudBriefings) {
       const vids = await fetchVideos(b.scriptsHash);
-      if (Object.keys(vids).length) videoMod.saveVideos(b.scriptsHash, vids);
+      if (Object.keys(vids).length)
+        videoMod.saveVideos(b.scriptsHash, vids, { pushCloud: false });
 
       const tr = await fetchTranslations(b.scriptsHash);
-      if (Object.keys(tr).length) transMod.saveTranslations(b.scriptsHash, tr);
+      if (Object.keys(tr).length)
+        transMod.saveTranslations(b.scriptsHash, tr, { pushCloud: false });
     }
   } catch {
     /* fica com cache local */

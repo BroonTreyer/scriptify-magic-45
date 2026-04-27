@@ -54,7 +54,12 @@ export function loadTranslations(sessionKey: string): TranslationMap {
   }
 }
 
-export function saveTranslations(sessionKey: string, map: TranslationMap) {
+export function saveTranslations(
+  sessionKey: string,
+  map: TranslationMap,
+  options: { pushCloud?: boolean } = {},
+) {
+  const pushCloud = options.pushCloud !== false;
   const ls = safeLS();
   if (!ls) return;
   try {
@@ -62,7 +67,7 @@ export function saveTranslations(sessionKey: string, map: TranslationMap) {
   } catch {
     /* ignore quota */
   }
-  void pushTranslations(sessionKey, map);
+  if (pushCloud) void pushTranslations(sessionKey, map);
 }
 
 /** Remove todas as traduções de um sessionKey (cache + cloud). */

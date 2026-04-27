@@ -38,9 +38,14 @@ export function useRealtimeSync(userId: string | null | undefined) {
     let firstLoad = true;
     // Ignore eventos disparados durante a janela inicial de hidratação,
     // para não tostar todo briefing/video que o syncOnLogin reescreve.
-    // 8s cobre o caso de syncOnLogin demorar (várias chamadas em paralelo).
-    const suppressUntil = Date.now() + 8000;
+    // 15s cobre syncOnLogin lento + ecos de upserts em lote (translations,
+    // videos) gerados pelo próprio cliente durante o push fire-and-forget.
+    let suppressUntil = Date.now() + 15000;
     const dirtyTables = new Set<string>();
+    // Última notificação exibida — usado para deduplicar toasts repetidos
+    // disparados em curta janela (ex: vários upserts de translations seguidos).
+    let lastToastSig = "";
+    let lastToastAt = 0;
 
     const trigger = (table: string) => {
       if (Date.now() < suppressUntil) return;
@@ -55,13 +60,23 @@ export function useRealtimeSync(userId: string | null | undefined) {
             NOTIFY_TABLES.has(t),
           );
           if (!firstLoad && notify.length > 0) {
-            toast.info("Atualizado em outro dispositivo", {
-              description: notify.join(", "),
-              duration: 3000,
-            });
+            const sig = notify.sort().join(",");
+            const now = Date.now();
+            // Dedupe: não repete o mesmo toast em < 10s.
+            if (sig !== lastToastSig || now - lastToastAt > 10000) {
+              lastToastSig = sig;
+              lastToastAt = now;
+              toast.info("Atualizado em outro dispositivo", {
+                description: notify.join(", "),
+                duration: 3000,
+              });
+            }
           }
           firstLoad = false;
           dirtyTables.clear();
+          // Após cada syncOnLogin, estende o silêncio por 5s pra absorver
+          // o eco realtime dos próprios upserts feitos durante a hidratação.
+          suppressUntil = Math.max(suppressUntil, Date.now() + 5000);
         });
       }, 800);
     };
