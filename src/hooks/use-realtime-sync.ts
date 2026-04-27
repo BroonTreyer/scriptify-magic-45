@@ -10,6 +10,7 @@ const TABLES = [
   "translations",
   "custom_avatars",
   "custom_voices",
+  "metrics",
 ] as const;
 
 /**
