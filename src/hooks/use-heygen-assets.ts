@@ -13,8 +13,35 @@ let cache: { avatars: HeygenAvatar[]; voices: HeygenVoice[] } | null = null;
 let inflight: Promise<{ avatars: HeygenAvatar[]; voices: HeygenVoice[] }> | null = null;
 const subscribers = new Set<(s: AssetsState) => void>();
 
+type AssetsPayload = { avatars?: HeygenAvatar[]; voices?: HeygenVoice[]; error?: string };
+
 function notify(state: AssetsState) {
   for (const cb of subscribers) cb(state);
+}
+
+async function readJsonSafely(res: Response): Promise<{ data: AssetsPayload | null; raw: string }> {
+  const raw = await res.text();
+  try {
+    return {
+      data: raw ? (JSON.parse(raw) as AssetsPayload) : null,
+      raw,
+    };
+  } catch {
+    return { data: null, raw };
+  }
+}
+
+function friendlyAssetsError(status: number, msg: string | undefined, raw: string, kind: "avatares" | "vozes") {
+  if (msg) return msg;
+  if (status === 504 || /upstream|timeout|timed? ?out/i.test(raw)) {
+    return `O HeyGen demorou demais para responder ao carregar ${kind}. Tente novamente em instantes.`;
+  }
+  if (status === 502 || status === 503) {
+    return `O HeyGen está instável ao carregar ${kind}. Tente de novo em alguns segundos.`;
+  }
+  if (status === 401) return "A chave do HeyGen parece inválida.";
+  if (status === 403) return "Sua sessão expirou. Recarregue a página.";
+  return `Erro ao carregar ${kind} (${status}).`;
 }
 
 async function fetchAssets(): Promise<{ avatars: HeygenAvatar[]; voices: HeygenVoice[] }> {
@@ -22,13 +49,19 @@ async function fetchAssets(): Promise<{ avatars: HeygenAvatar[]; voices: HeygenV
     apiFetch("/api/public/heygen/avatars"),
     apiFetch("/api/public/heygen/voices"),
   ]);
-  const aJson = await aRes.json();
-  const vJson = await vRes.json();
-  if (!aRes.ok) throw new Error(aJson.error || "Erro ao carregar avatares.");
-  if (!vRes.ok) throw new Error(vJson.error || "Erro ao carregar vozes.");
+  const [{ data: aJson, raw: aRaw }, { data: vJson, raw: vRaw }] = await Promise.all([
+    readJsonSafely(aRes),
+    readJsonSafely(vRes),
+  ]);
+  if (!aRes.ok) {
+    throw new Error(friendlyAssetsError(aRes.status, aJson?.error, aRaw, "avatares"));
+  }
+  if (!vRes.ok) {
+    throw new Error(friendlyAssetsError(vRes.status, vJson?.error, vRaw, "vozes"));
+  }
   return {
-    avatars: (aJson.avatars ?? []) as HeygenAvatar[],
-    voices: (vJson.voices ?? []) as HeygenVoice[],
+    avatars: (aJson?.avatars ?? []) as HeygenAvatar[],
+    voices: (vJson?.voices ?? []) as HeygenVoice[],
   };
 }
 
