@@ -860,7 +860,7 @@ function CriativoOS() {
 
       const result: GenerateResult = {
         analise: filledAnalise,
-        scripts: rawScripts,
+        scripts: validScripts,
         guiaProducao: filledGuia,
       };
       try {
@@ -869,10 +869,7 @@ function CriativoOS() {
         /* ignore storage errors */
       }
 
-      const partial =
-        !a.momento_de_vida ||
-        !g.perfil_avatar ||
-        rawScripts.some((s) => !s?.hook || !s?.cta);
+      const partial = !a.momento_de_vida || !g.perfil_avatar;
       if (partial) {
         setError(
           "Resposta parcial do Claude — alguns campos vieram vazios. Considere gerar de novo.",
