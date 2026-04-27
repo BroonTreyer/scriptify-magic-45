@@ -6,7 +6,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
-import { extractJson } from "@/server/generate-scripts";
+import { extractJson, repairJson } from "@/server/generate-scripts";
 import type {
   Analise,
   BriefingInput,
