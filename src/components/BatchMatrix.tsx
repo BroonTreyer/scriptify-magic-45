@@ -41,7 +41,7 @@ function buildScriptText(s: Script): string {
 }
 
 export function BatchMatrix({ open, onOpenChange, scripts }: Props) {
-  const { avatars, voices, loading: loadingMeta, error: metaError } =
+  const { avatars, voices, loading: loadingMeta, error: metaError, refresh: refreshMeta } =
     useHeygenAssets(open);
 
   // Selections
@@ -309,14 +309,23 @@ export function BatchMatrix({ open, onOpenChange, scripts }: Props) {
         <div className="px-6 py-5 space-y-6">
           {metaError && (
             <div
-              className="px-4 py-3 rounded text-xs font-mono"
+              className="px-4 py-3 rounded text-xs font-mono flex items-center justify-between gap-3"
               style={{
                 background: "color-mix(in oklab, var(--co-red) 10%, transparent)",
                 border: "1px solid var(--co-red)",
                 color: "var(--co-red)",
               }}
             >
-              ⚠ {metaError}
+              <span>⚠ {metaError}</span>
+              <button
+                type="button"
+                onClick={() => void refreshMeta()}
+                disabled={loadingMeta}
+                className="shrink-0 px-3 py-1 rounded font-bold uppercase tracking-widest text-[10px] disabled:opacity-50"
+                style={{ border: "1px solid var(--co-red)", color: "var(--co-red)" }}
+              >
+                {loadingMeta ? "..." : "Tentar de novo"}
+              </button>
             </div>
           )}
 
