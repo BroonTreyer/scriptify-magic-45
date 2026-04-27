@@ -37,16 +37,26 @@ export function UrlExtractor({ onExtracted }: Props) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
       });
-      const data = (await res.json()) as {
-        briefing?: Pick<
-          BriefingInput,
-          "produto" | "publico" | "dor" | "transformacao" | "prova" | "tom"
-        >;
-        sourceUrl?: string;
-        error?: string;
-      };
-      if (!res.ok || !data.briefing) {
-        throw new Error(data.error || `Erro (${res.status})`);
+      // Parse defensivo: o proxy pode devolver "upstream request timeout" como
+      // texto plano quando o worker demora demais. res.json() direto quebra.
+      const raw = await res.text();
+      let data:
+        | {
+            briefing?: Pick<
+              BriefingInput,
+              "produto" | "publico" | "dor" | "transformacao" | "prova" | "tom"
+            >;
+            sourceUrl?: string;
+            error?: string;
+          }
+        | null = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+      if (!res.ok || !data?.briefing) {
+        throw new Error(friendlyError(res.status, data?.error, raw));
       }
       onExtracted({ ...data.briefing, url: data.sourceUrl ?? url.trim() });
       setSuccess(true);
@@ -56,6 +66,29 @@ export function UrlExtractor({ onExtracted }: Props) {
       setLoading(false);
     }
   };
+
+function friendlyError(
+  status: number,
+  msg: string | undefined,
+  raw: string,
+): string {
+  if (msg) return msg;
+  if (status === 504 || /upstream|timeout|timed? ?out/i.test(raw)) {
+    return "O servidor demorou demais pra responder. Tente novamente em instantes.";
+  }
+  if (status === 502 || status === 503) {
+    return "Serviço temporariamente indisponível. Tente de novo em alguns segundos.";
+  }
+  if (status === 429) {
+    return "Muitas requisições. Aguarde alguns segundos.";
+  }
+  if (status === 402) return "Sem créditos no provedor de scraping.";
+  if (status === 422) return "A página retornou conteúdo insuficiente.";
+  if (status === 401 || status === 403) {
+    return "Sessão expirada. Recarregue a página.";
+  }
+  return `Erro (${status}).`;
+}
 
   return (
     <div
