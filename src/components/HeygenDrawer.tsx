@@ -577,24 +577,37 @@ export function HeygenDrawer({
               </div>
             </div>
 
-            <div>
+            {isCustomVoiceId(selectedVoice) ? (
               <div
-                className="text-[11px] font-bold font-mono uppercase tracking-widest mb-2 flex justify-between"
-                style={labelStyle}
+                className="text-[10px] font-mono px-3 py-2 rounded"
+                style={{
+                  background: "var(--co-surface)",
+                  border: "1px solid var(--co-border)",
+                  color: "var(--co-text-dim)",
+                }}
               >
-                <span>Velocidade da fala</span>
-                <span style={{ color: "var(--co-red)" }}>{speed.toFixed(2)}x</span>
+                Velocidade da fala não se aplica a vozes clonadas — o áudio é enviado pronto ao HeyGen.
               </div>
-              <input
-                type="range"
-                min={0.8}
-                max={1.2}
-                step={0.02}
-                value={speed}
-                onChange={(e) => setSpeed(parseFloat(e.target.value))}
-                className="w-full accent-red-600"
-              />
-            </div>
+            ) : (
+              <div>
+                <div
+                  className="text-[11px] font-bold font-mono uppercase tracking-widest mb-2 flex justify-between"
+                  style={labelStyle}
+                >
+                  <span>Velocidade da fala</span>
+                  <span style={{ color: "var(--co-red)" }}>{speed.toFixed(2)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.8}
+                  max={1.2}
+                  step={0.02}
+                  value={speed}
+                  onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                  className="w-full accent-red-600"
+                />
+              </div>
+            )}
           </section>
 
           {/* TEXTO PREVIEW */}
