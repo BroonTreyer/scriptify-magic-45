@@ -56,8 +56,21 @@ export const Route = createFileRoute("/api/public/heygen/status/$videoId")({
         }
 
         const d = json.data ?? {};
-        const errMsg =
-          typeof d.error === "string" ? d.error : (d.error?.message ?? undefined);
+        const rawErr =
+          typeof d.error === "string"
+            ? d.error
+            : (d.error as { message?: string; code?: string } | undefined);
+        const errCode =
+          typeof rawErr === "object" && rawErr ? (rawErr.code ?? "") : "";
+        const errText =
+          typeof rawErr === "string" ? rawErr : (rawErr?.message ?? "");
+        const combined = `${errCode} ${errText}`.toUpperCase();
+        let errMsg: string | undefined = errText || undefined;
+        if (combined.includes("MOVIO_PAYMENT_INSUFFICIENT_CREDIT") || combined.includes("INSUFFICIENT_CREDIT")) {
+          errMsg = "Créditos do HeyGen esgotados. Recarregue em app.heygen.com para continuar gerando vídeos.";
+        } else if (combined.includes("MOVIO_")) {
+          errMsg = `Erro do HeyGen ao renderizar (${errCode || "MOVIO"}). Tente novamente em instantes.`;
+        }
 
         return new Response(
           JSON.stringify({
