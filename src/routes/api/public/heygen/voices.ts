@@ -79,6 +79,18 @@ export const Route = createFileRoute("/api/public/heygen/voices")({
         };
         const voices = (json.data?.voices ?? [])
           .filter((v) => (v.language ?? "").toLowerCase() === "portuguese")
+          .filter((v) => {
+            // Esconde vozes clonadas pelo dono da conta com nomes de upload
+            // (ex: "ADS 08 - GANCHO 01.mp4"). Mantém só vozes nativas com gender definido.
+            const g = (v.gender ?? "").toLowerCase();
+            if (g !== "male" && g !== "female") return false;
+            const name = (v.name ?? "").trim();
+            if (!name) return false;
+            if (/\.(mp3|mp4|wav|m4a|ogg|webm)\b/i.test(name)) return false;
+            if (/^(ads|gancho|teste|test|sample|upload|clone)\b/i.test(name)) return false;
+            if (/^\d{3,}/.test(name)) return false;
+            return true;
+          })
           .map((v) => ({
             voice_id: v.voice_id,
             name: v.name ?? "Voz",
